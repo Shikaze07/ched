@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import MultipleSelector, { Option } from "@/components/ui/multi-select";
 import {
   mockCMOs,
@@ -20,7 +21,8 @@ import {
   getAssociatedPrograms,
   getProgramOptionsByIds
 } from "@/lib/mockData";
-import { Info } from "lucide-react";
+import { Info, Search, X } from "lucide-react";
+import { evaluationStore, EvaluationRecord } from "@/lib/evaluation-store";
 
 // Transform CMO data to options
 const cmoOptions: Option[] = mockCMOs.map((cmo) => ({
@@ -43,6 +45,10 @@ const Page = () => {
     dateOfEvaluation: "",
   });
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<EvaluationRecord[]>([]);
+  const [showResults, setShowResults] = useState(false);
+
   // Auto-populate programs when CMOs are selected
   useEffect(() => {
     if (selectedCMOs.length > 0) {
@@ -53,12 +59,9 @@ const Page = () => {
       // Set suggested programs
       setSuggestedPrograms(associatedProgramOptions);
 
-      // Auto-select if only one program is associated
-      if (associatedProgramOptions.length === 1) {
+      // Auto-select all associated programs
+      if (associatedProgramOptions.length > 0) {
         setSelectedPrograms(associatedProgramOptions);
-      } else if (associatedProgramOptions.length > 0) {
-        // If multiple programs, suggest them but let user choose
-        // You can also auto-select all: setSelectedPrograms(associatedProgramOptions);
       }
     } else {
       setSuggestedPrograms([]);
@@ -66,6 +69,21 @@ const Page = () => {
       // setSelectedPrograms([]);
     }
   }, [selectedCMOs]);
+
+  const handleSearch = () => {
+    if (!searchQuery.trim()) return;
+    const results = evaluationStore.searchRecords(searchQuery);
+    setSearchResults(results);
+    setShowResults(true);
+  };
+
+  const handleSelectResult = (record: EvaluationRecord) => {
+    // Store record in sessionStorage for the evaluation page to pick up
+    sessionStorage.setItem("evaluationData", JSON.stringify(record));
+
+    // Navigate directly to the evaluation page
+    router.push(`/evaluation/${record.refNo}`);
+  };
 
   const handleProceed = () => {
     // Validation
@@ -92,16 +110,19 @@ const Page = () => {
     // Generate reference number
     const refNo = generateRefNo();
 
-    // Store form data in sessionStorage
-    sessionStorage.setItem(
-      "evaluationData",
-      JSON.stringify({
-        ...formData,
-        selectedCMOs: selectedCMOs.map((cmo) => cmo.value),
-        selectedPrograms: selectedPrograms,
-        refNo,
-      })
-    );
+    const record: EvaluationRecord = {
+      ...formData,
+      selectedCMOs: selectedCMOs.map((cmo) => cmo.value),
+      selectedPrograms: selectedPrograms,
+      refNo,
+      timestamp: Date.now(),
+    };
+
+    // Save to store
+    evaluationStore.saveRecord(record);
+
+    // Store form data in sessionStorage for current evaluation session
+    sessionStorage.setItem("evaluationData", JSON.stringify(record));
 
     // Navigate to evaluation page
     router.push(`/evaluation/${refNo}`);
@@ -129,13 +150,91 @@ const Page = () => {
             <CardTitle className="flex-1">
               Program Evaluation Self Assessment
             </CardTitle>
-            <div className="flex flex-row gap-2">
-              <Input
-                className="w-xl"
-                placeholder="Search name or control number to retrieve data..."
-              />
-              <Button style={{ backgroundColor: "#2980b9" }}>Search</Button>
+            <div className="flex flex-row gap-2 relative">
+              <div className="relative flex-1">
+                <Input
+                  className="w-xl"
+                  placeholder="Search name or control number to retrieve data..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                />
+                {searchQuery && (
+                  <button
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setShowResults(false);
+                    }}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              <Button
+                style={{ backgroundColor: "#2980b9" }}
+                onClick={handleSearch}
+              >
+                <Search className="w-4 h-4 mr-2" />
+                Search
+              </Button>
               <Button style={{ backgroundColor: "#ffc518" }}>Print</Button>
+
+              {/* Search Results Dropdown */}
+              {showResults && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-md shadow-lg z-50 max-h-60 overflow-auto">
+                  {searchResults.length > 0 ? (
+                    <div className="p-2">
+                      <p className="text-xs font-semibold text-gray-500 mb-2 px-2">
+                        Search Results ({searchResults.length})
+                      </p>
+                      {searchResults.map((result) => (
+                        <div
+                          key={result.refNo}
+                          className="flex justify-between items-center p-2 hover:bg-blue-50 cursor-pointer rounded border-b last:border-0"
+                          onClick={() => handleSelectResult(result)}
+                        >
+                          <div className="flex-1">
+                            <p className="font-medium text-sm">
+                              {result.personnelName}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {result.institution} - {result.academicYear}
+                            </p>
+                            {/* CMO Details */}
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {result.selectedCMOs.map((cmoId) => {
+                                const cmo = mockCMOs.find((c) => c.id === cmoId);
+                                return cmo ? (
+                                  <Badge
+                                    key={cmoId}
+                                    variant="outline"
+                                    className="text-[9px] py-0 px-1 bg-blue-50 text-blue-700 border-blue-200"
+                                  >
+                                    {cmo.cmo_number.split(',')[0]}
+                                  </Badge>
+                                ) : null;
+                              })}
+                            </div>
+                          </div>
+                          <div className="text-right ml-4">
+                            <Badge variant="secondary" className="text-[10px]">
+                              {result.refNo}
+                            </Badge>
+                            <p className="text-[10px] text-gray-400 mt-1">
+                              {new Date(result.timestamp).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-4 text-center text-sm text-gray-500">
+                      No records found for "{searchQuery}"
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -226,6 +325,9 @@ const Page = () => {
                       </SelectItem>
                       <SelectItem value="state-university">
                         Philippine State University
+                      </SelectItem>
+                      <SelectItem value="sti-college-koronadal">
+                        STI COLLEGE KORONADAL
                       </SelectItem>
                     </SelectContent>
                   </Select>
