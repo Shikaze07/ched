@@ -21,8 +21,16 @@ import {
   getAssociatedPrograms,
   getProgramOptionsByIds
 } from "@/lib/mockData";
-import { Info, Search, X } from "lucide-react";
+import { Info, Search, X, AlertTriangle } from "lucide-react";
 import { evaluationStore, EvaluationRecord } from "@/lib/evaluation-store";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 // Transform CMO data to options
 const cmoOptions: Option[] = mockCMOs.map((cmo) => ({
@@ -48,6 +56,16 @@ const Page = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<EvaluationRecord[]>([]);
   const [showResults, setShowResults] = useState(false);
+
+  // Duplicate warning states
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
+  const [duplicateCMOList, setDuplicateCMOList] = useState<string[]>([]);
+  const [pendingRecord, setPendingRecord] = useState<EvaluationRecord | null>(null);
+
+  // Validation states
+  const [showValidationDialog, setShowValidationDialog] = useState(false);
+  const [validationMessage, setValidationMessage] = useState("");
+  const [validationTitle, setValidationTitle] = useState("Required Information");
 
   // Auto-populate programs when CMOs are selected
   useEffect(() => {
@@ -88,24 +106,67 @@ const Page = () => {
   const handleProceed = () => {
     // Validation
     if (!formData.personnelName || !formData.position || !formData.email) {
-      alert("Please fill in all required encoder details");
+      setValidationTitle("Incomplete Form");
+      setValidationMessage("Please fill in all required encoder details (*)");
+      setShowValidationDialog(true);
       return;
     }
 
     if (!formData.institution || !formData.academicYear) {
-      alert("Please fill in all required institution information");
+      setValidationTitle("Incomplete Form");
+      setValidationMessage("Please fill in all required institution information (*)");
+      setShowValidationDialog(true);
       return;
     }
 
     if (selectedCMOs.length === 0) {
-      alert("Please select at least one CMO");
+      setValidationTitle("CMO Required");
+      setValidationMessage("Please select at least one CMO to proceed with the evaluation.");
+      setShowValidationDialog(true);
       return;
     }
 
     if (selectedPrograms.length === 0) {
-      alert("Please select at least one program");
+      setValidationTitle("Program Required");
+      setValidationMessage("Please select at least one program associated with the CMO.");
+      setShowValidationDialog(true);
       return;
     }
+
+    // Email validation
+    const isValidEmail = (email: string) => {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    };
+
+    if (!isValidEmail(formData.email)) {
+      setValidationTitle("Invalid Email");
+      setValidationMessage("The email address provided is invalid. Please enter a valid email (e.g., name@example.com).");
+      setShowValidationDialog(true);
+      return;
+    }
+
+    // Check for duplicates
+    const records = evaluationStore.getAllRecords();
+    const currentEmail = formData.email.toLowerCase().trim();
+    const currentInstitution = formData.institution.trim();
+    const currentAcademicYear = formData.academicYear.trim();
+
+    const existingForUser = records.filter(
+      (r) =>
+        r.email.toLowerCase().trim() === currentEmail &&
+        r.institution.trim() === currentInstitution &&
+        r.academicYear.trim() === currentAcademicYear
+    );
+
+    const duplicates: string[] = [];
+    selectedCMOs.forEach((cmo) => {
+      const alreadyEvaluated = existingForUser.some((r) =>
+        r.selectedCMOs.includes(cmo.value)
+      );
+      if (alreadyEvaluated) {
+        duplicates.push(cmo.label);
+      }
+    });
 
     // Generate reference number
     const refNo = generateRefNo();
@@ -118,6 +179,17 @@ const Page = () => {
       timestamp: Date.now(),
     };
 
+    if (duplicates.length > 0) {
+      setDuplicateCMOList(duplicates);
+      setPendingRecord(record);
+      setShowDuplicateWarning(true);
+      return;
+    }
+
+    saveAndNavigate(record);
+  };
+
+  const saveAndNavigate = (record: EvaluationRecord) => {
     // Save to store
     evaluationStore.saveRecord(record);
 
@@ -125,7 +197,7 @@ const Page = () => {
     sessionStorage.setItem("evaluationData", JSON.stringify(record));
 
     // Navigate to evaluation page
-    router.push(`/evaluation/${refNo}`);
+    router.push(`/evaluation/${record.refNo}`);
   };
 
   const generateRefNo = () => {
@@ -466,6 +538,76 @@ const Page = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Duplicate Warning Dialog */}
+      <Dialog open={showDuplicateWarning} onOpenChange={setShowDuplicateWarning}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-600">
+              <AlertTriangle className="h-5 w-5" />
+              Duplicate Evaluation Detected
+            </DialogTitle>
+            <DialogDescription className="py-2">
+              Our records show that you have already evaluated the following CMO(s) for this institution and academic year:
+            </DialogDescription>
+          </DialogHeader>
+          <div className="bg-amber-50 p-3 rounded-md border border-amber-100 mb-4">
+            <ul className="list-disc pl-5 space-y-1">
+              {duplicateCMOList.map((cmo, index) => (
+                <li key={index} className="text-sm font-medium text-amber-900">
+                  {cmo}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <p className="text-sm text-gray-500 mb-4">
+            Do you want to proceed with a new evaluation anyway, or cancel?
+          </p>
+          <DialogFooter className="flex sm:justify-between gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowDuplicateWarning(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              style={{ backgroundColor: "#2980b9" }}
+              onClick={() => {
+                if (pendingRecord) {
+                  saveAndNavigate(pendingRecord);
+                }
+                setShowDuplicateWarning(false);
+              }}
+            >
+              Proceed Anyway
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Generic Validation Dialog */}
+      <Dialog open={showValidationDialog} onOpenChange={setShowValidationDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <Info className="h-5 w-5" />
+              {validationTitle}
+            </DialogTitle>
+            <DialogDescription className="py-2 text-gray-700 font-medium">
+              {validationMessage}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              className="w-full sm:w-auto"
+              style={{ backgroundColor: "#2980b9" }}
+              onClick={() => setShowValidationDialog(false)}
+            >
+              OK, I'll fix it
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
