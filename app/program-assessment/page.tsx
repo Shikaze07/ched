@@ -23,6 +23,7 @@ import {
 } from "@/lib/mockData";
 import { Info, Search, X, AlertTriangle } from "lucide-react";
 import { evaluationStore, EvaluationRecord } from "@/lib/evaluation-store";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -77,9 +78,9 @@ const Page = () => {
       // Set suggested programs
       setSuggestedPrograms(associatedProgramOptions);
 
-      // Auto-select all associated programs
+      // Auto-select ONLY the first associated program if one is found
       if (associatedProgramOptions.length > 0) {
-        setSelectedPrograms(associatedProgramOptions);
+        setSelectedPrograms([associatedProgramOptions[0]]);
       }
     } else {
       setSuggestedPrograms([]);
@@ -93,6 +94,9 @@ const Page = () => {
     const results = evaluationStore.searchRecords(searchQuery);
     setSearchResults(results);
     setShowResults(true);
+    if (results.length === 0) {
+      toast.error("No records found for that search query.");
+    }
   };
 
   const handleSelectResult = (record: EvaluationRecord) => {
@@ -121,14 +125,14 @@ const Page = () => {
 
     if (selectedCMOs.length === 0) {
       setValidationTitle("CMO Required");
-      setValidationMessage("Please select at least one CMO to proceed with the evaluation.");
+      setValidationMessage("Please select a CMO to proceed with the evaluation.");
       setShowValidationDialog(true);
       return;
     }
 
     if (selectedPrograms.length === 0) {
       setValidationTitle("Program Required");
-      setValidationMessage("Please select at least one program associated with the CMO.");
+      setValidationMessage("Please select a program associated with the CMO.");
       setShowValidationDialog(true);
       return;
     }
@@ -197,6 +201,7 @@ const Page = () => {
     sessionStorage.setItem("evaluationData", JSON.stringify(record));
 
     // Navigate to evaluation page
+    toast.success("Proceeding to evaluation checklist...");
     router.push(`/evaluation/${record.refNo}`);
   };
 
@@ -218,14 +223,14 @@ const Page = () => {
     <div className="p-8">
       <Card>
         <CardHeader>
-          <div className="flex flex-row items-center">
-            <CardTitle className="flex-1">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <CardTitle className="text-xl md:text-2xl">
               Program Evaluation Self Assessment
             </CardTitle>
-            <div className="flex flex-row gap-2 relative">
+            <div className="flex flex-col sm:flex-row gap-2 relative w-full md:w-auto md:max-w-2xl">
               <div className="relative flex-1">
                 <Input
-                  className="w-xl"
+                  className="w-full sm:min-w-[300px] md:min-w-[400px]"
                   placeholder="Search name or control number to retrieve data..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -243,14 +248,17 @@ const Page = () => {
                   </button>
                 )}
               </div>
-              <Button
-                style={{ backgroundColor: "#2980b9" }}
-                onClick={handleSearch}
-              >
-                <Search className="w-4 h-4 mr-2" />
-                Search
-              </Button>
-              <Button style={{ backgroundColor: "#ffc518" }}>Print</Button>
+              <div className="flex gap-2">
+                <Button
+                  className="flex-1 sm:flex-none"
+                  style={{ backgroundColor: "#2980b9" }}
+                  onClick={handleSearch}
+                >
+                  <Search className="w-4 h-4 mr-2" />
+                  Search
+                </Button>
+                <Button style={{ backgroundColor: "#ffc518" }}>Print</Button>
+              </div>
 
               {/* Search Results Dropdown */}
               {showResults && (
@@ -438,16 +446,17 @@ const Page = () => {
                   value={selectedCMOs}
                   onChange={setSelectedCMOs}
                   defaultOptions={cmoOptions}
-                  placeholder="Select one or multiple CMOs..."
+                  placeholder="Select a CMO..."
+                  maxSelected={1}
+                  hidePlaceholderWhenSelected={true}
+                  hideClearAllButton={true}
                   emptyIndicator={
                     <p className="text-center text-sm text-muted-foreground py-6">
                       No CMOs found.
                     </p>
                   }
                 />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Selected {selectedCMOs.length} CMO(s)
-                </p>
+
               </div>
               <div className="flex-1 min-w-[200px]">
                 <Label className="mb-2">
@@ -457,7 +466,10 @@ const Page = () => {
                   value={selectedPrograms}
                   onChange={setSelectedPrograms}
                   defaultOptions={programOptions}
-                  placeholder="Select programs..."
+                  placeholder="Select a program..."
+                  maxSelected={1}
+                  hidePlaceholderWhenSelected={true}
+                  hideClearAllButton={true}
                   creatable
                   emptyIndicator={
                     <p className="text-center text-sm text-muted-foreground py-6">
@@ -465,9 +477,7 @@ const Page = () => {
                     </p>
                   }
                 />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Selected {selectedPrograms.length} program(s)
-                </p>
+
 
                 {/* Show suggested programs */}
                 {/* {suggestedPrograms.length > 0 && (

@@ -373,6 +373,11 @@ const MultipleSelector = ({
 
           setSelected(newOptions)
           onChange?.(newOptions)
+
+          if (newOptions.length >= maxSelected) {
+            setOpen(false)
+            inputRef.current?.blur()
+          }
         }}
       >
         {`Create "${inputValue}"`}
@@ -533,7 +538,7 @@ const MultipleSelector = ({
                 disabled ||
                 selected.length < 1 ||
                 selected.filter(s => s.fixed).length === selected.length) &&
-                'hidden'
+              'hidden'
             )}
             aria-label='Clear all'
           >
@@ -595,6 +600,11 @@ const MultipleSelector = ({
 
                                 setSelected(newOptions)
                                 onChange?.(newOptions)
+
+                                if (newOptions.length >= maxSelected) {
+                                  setOpen(false)
+                                  inputRef.current?.blur()
+                                }
                               }}
                               className={cn(
                                 'cursor-pointer',
