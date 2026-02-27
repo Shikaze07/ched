@@ -1,11 +1,38 @@
 import { prisma } from "@/lib/prisma";
+import { executeQuery } from "@/lib/db-query";
 import pusher from "@/lib/pusher-server";
 import { NextRequest, NextResponse } from "next/server";
+
+// Helper function to batch create responses to avoid connection flooding
+async function createResponsesInBatches(
+  responses: Record<string, any>,
+  evaluationId: string,
+  batchSize: number = 2
+) {
+  const entries = Object.entries(responses);
+  for (let i = 0; i < entries.length; i += batchSize) {
+    const batch = entries.slice(i, i + batchSize);
+    const promises = batch.map(([requirementId, response]: [string, any]) =>
+      prisma.evaluationResponse.create({
+        data: {
+          requirementId: requirementId,
+          evaluationId: evaluationId,
+          actualSituation: response.actual_situation || "",
+          googleLink: response.google_link || "",
+          heiCompliance: response.hei_compliance || "",
+          chedCompliance: response.ched_compliance || "",
+          linkAccessible: response.link_accessible || "",
+          chedRemarks: response.ched_remarks || "",
+        },
+      })
+    );
+    await Promise.all(promises);
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-
     const { refNo, responses, publishUpdate } = body;
 
     if (!refNo) {
@@ -16,9 +43,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Get the evaluation record
-    const evaluationRecord = await prisma.evaluationRecord.findUnique({
-      where: { refNo },
-    });
+    const evaluationRecord = await executeQuery(
+      () =>
+        prisma.evaluationRecord.findUnique({
+          where: { refNo },
+        }),
+      5000
+    );
 
     if (!evaluationRecord) {
       return NextResponse.json(
@@ -27,33 +58,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Delete existing responses for this evaluation
-    await prisma.evaluationResponse.deleteMany({
-      where: {
-        evaluationId: evaluationRecord.id,
-      },
-    });
-
-    // Save new responses
+    // Delete and create in a transaction if responses exist
     if (responses && Object.keys(responses).length > 0) {
-      const responsePromises = Object.entries(responses).map(
-        ([requirementId, response]: [string, any]) => {
-          return prisma.evaluationResponse.create({
-            data: {
-              requirementId: requirementId,
-              evaluationId: evaluationRecord.id,
-              actualSituation: response.actual_situation || "",
-              googleLink: response.google_link || "",
-              heiCompliance: response.hei_compliance || "",
-              chedCompliance: response.ched_compliance || "",
-              linkAccessible: response.link_accessible || "",
-              chedRemarks: response.ched_remarks || "",
-            },
-          });
-        }
-      );
+      await executeQuery(async () => {
+        // Delete existing responses
+        await prisma.evaluationResponse.deleteMany({
+          where: {
+            evaluationId: evaluationRecord.id,
+          },
+        });
 
-      await Promise.all(responsePromises);
+        // Create new responses in batches to avoid overwhelming connection pool
+        await createResponsesInBatches(
+          responses,
+          evaluationRecord.id
+        );
+      }, 8000);
     }
 
     // Publish update to Pusher if requested
@@ -72,6 +92,14 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error("Error saving evaluation responses:", error);
+
+    if (error instanceof Error && error.message.includes("timeout")) {
+      return NextResponse.json(
+        { error: "Save operation timed out. Please try again." },
+        { status: 408 }
+      );
+    }
+
     return NextResponse.json(
       { error: "Failed to save evaluation responses" },
       { status: 500 }
@@ -91,10 +119,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get the evaluation record
-    const evaluationRecord = await prisma.evaluationRecord.findUnique({
-      where: { refNo },
-    });
+    // Get evaluation record and responses in parallel
+    const evaluationRecord = await executeQuery(
+      () =>
+        prisma.evaluationRecord.findUnique({
+          where: { refNo },
+        }),
+      5000
+    );
 
     if (!evaluationRecord) {
       return NextResponse.json(
@@ -104,11 +136,15 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all evaluation responses for this evaluation
-    const responses = await prisma.evaluationResponse.findMany({
-      where: {
-        evaluationId: evaluationRecord.id,
-      },
-    });
+    const responses = await executeQuery(
+      () =>
+        prisma.evaluationResponse.findMany({
+          where: {
+            evaluationId: evaluationRecord.id,
+          },
+        }),
+      5000
+    );
 
     // Convert to the format expected by the frontend
     const responseMap: Record<string, any> = {};
@@ -127,6 +163,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(responseMap);
   } catch (error) {
     console.error("Error fetching evaluation responses:", error);
+
+    if (error instanceof Error && error.message.includes("timeout")) {
+      return NextResponse.json(
+        { error: "Fetch operation timed out. Please try again." },
+        { status: 408 }
+      );
+    }
+
     return NextResponse.json(
       { error: "Failed to fetch evaluation responses" },
       { status: 500 }

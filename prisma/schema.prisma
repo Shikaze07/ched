@@ -107,14 +107,12 @@ model Requirement {
   description      String
   requiredEvidence String
   sortOrder        Int
-  responses        EvaluationResponse[]
 }
 
 model EvaluationResponse {
-  id                String     @id @default(cuid()) @db.VarChar(25)
-  requirementId     String     @db.VarChar(25)
-  evaluationId      String?    @db.VarChar(25)
-  requirement       Requirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  id                String            @id @default(cuid()) @db.VarChar(25)
+  requirementId     String            @db.VarChar(25)
+  evaluationId      String?           @db.VarChar(25)
   evaluation        EvaluationRecord? @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
   actualSituation   String
   googleLink        String

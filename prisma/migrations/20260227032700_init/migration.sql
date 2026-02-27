@@ -115,6 +115,7 @@ CREATE TABLE `Requirement` (
 CREATE TABLE `EvaluationResponse` (
     `id` VARCHAR(25) NOT NULL,
     `requirementId` VARCHAR(25) NOT NULL,
+    `evaluationId` VARCHAR(25) NULL,
     `actualSituation` VARCHAR(191) NOT NULL,
     `googleLink` VARCHAR(191) NOT NULL,
     `heiCompliance` VARCHAR(191) NOT NULL,
@@ -167,3 +168,6 @@ ALTER TABLE `Requirement` ADD CONSTRAINT `Requirement_sectionId_fkey` FOREIGN KE
 
 -- AddForeignKey
 ALTER TABLE `EvaluationResponse` ADD CONSTRAINT `EvaluationResponse_requirementId_fkey` FOREIGN KEY (`requirementId`) REFERENCES `Requirement`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `EvaluationResponse` ADD CONSTRAINT `EvaluationResponse_evaluationId_fkey` FOREIGN KEY (`evaluationId`) REFERENCES `EvaluationRecord`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;

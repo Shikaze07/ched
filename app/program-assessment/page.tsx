@@ -46,6 +46,7 @@ const Page = () => {
   const [selectedCMOs, setSelectedCMOs] = useState<Option[]>([]);
   const [selectedPrograms, setSelectedPrograms] = useState<Option[]>([]);
   const [suggestedPrograms, setSuggestedPrograms] = useState<Option[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     personnelName: "",
     position: "",
@@ -59,6 +60,7 @@ const Page = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<EvaluationRecord[]>([]);
   const [showResults, setShowResults] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
 
   // Duplicate warning states
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
@@ -106,13 +108,22 @@ const Page = () => {
   }, [selectedPrograms, selectedCMOs]);
 
   const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
+    if (!searchQuery.trim()) {
+      toast.error("Please enter a search query");
+      return;
+    }
     
+    setIsSearching(true);
     try {
-      // First try database
+      // First try database with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+      
       const response = await fetch(
-        `/api/evaluation/search?q=${encodeURIComponent(searchQuery)}`
+        `/api/evaluation/search?q=${encodeURIComponent(searchQuery)}`,
+        { signal: controller.signal }
       );
+      clearTimeout(timeoutId);
       
       let results: EvaluationRecord[] = [];
       
@@ -130,17 +141,27 @@ const Page = () => {
       
       if (results.length === 0) {
         toast.error("No records found for that search query.");
+      } else {
+        toast.success(`Found ${results.length} record(s)`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Search error:", error);
-      // Fall back to local store
-      const results = evaluationStore.searchRecords(searchQuery);
-      setSearchResults(results);
-      setShowResults(true);
       
-      if (results.length === 0) {
-        toast.error("No records found for that search query.");
+      // Check if it's a timeout error
+      if (error.name === 'AbortError') {
+        toast.error("Search timed out. Please try again.");
+      } else {
+        // Fall back to local store
+        const results = evaluationStore.searchRecords(searchQuery);
+        setSearchResults(results);
+        setShowResults(true);
+        
+        if (results.length === 0) {
+          toast.error("No records found for that search query.");
+        }
       }
+    } finally {
+      setIsSearching(false);
     }
   };
 
@@ -239,6 +260,7 @@ const Page = () => {
   };
 
   const saveAndNavigate = async (record: EvaluationRecord) => {
+    setIsLoading(true);
     try {
       // Save to database via API
       const response = await fetch("/api/evaluation", {
@@ -276,6 +298,7 @@ const Page = () => {
     } catch (error) {
       console.error("Error saving evaluation record:", error);
       toast.error("Failed to save evaluation record. Please try again.");
+      setIsLoading(false);
     }
   };
 
@@ -343,9 +366,19 @@ const Page = () => {
                   className="flex-1 sm:flex-none"
                   style={{ backgroundColor: "#2980b9" }}
                   onClick={handleSearch}
+                  disabled={!searchQuery.trim() || isSearching}
                 >
-                  <Search className="w-4 h-4 mr-2" />
-                  Search
+                  {isSearching ? (
+                    <>
+                      <span className="inline-block animate-spin mr-2">⟳</span>
+                      Searching...
+                    </>
+                  ) : (
+                    <>
+                      <Search className="w-4 h-4 mr-2" />
+                      Search
+                    </>
+                  )}
                 </Button>
                 <Button style={{ backgroundColor: "#ffc518" }}>Print</Button>
               </div>
@@ -355,14 +388,33 @@ const Page = () => {
                 <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-md shadow-lg z-50 max-h-60 overflow-auto">
                   {searchResults.length > 0 ? (
                     <div className="p-2">
-                      <p className="text-xs font-semibold text-gray-500 mb-2 px-2">
-                        Search Results ({searchResults.length})
-                      </p>
+                      <div className="flex justify-between items-center mb-2 px-2 pb-2 border-b">
+                        <p className="text-xs font-semibold text-gray-500">
+                          Search Results ({searchResults.length})
+                        </p>
+                        <button
+                          className="text-gray-400 hover:text-gray-600 transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowResults(false);
+                          }}
+                          aria-label="Close search results"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
                       {searchResults.map((result) => (
                         <div
                           key={result.refNo}
-                          className="flex justify-between items-center p-2 hover:bg-blue-50 cursor-pointer rounded border-b last:border-0"
+                          className="flex justify-between items-center p-2 hover:bg-blue-50 cursor-pointer rounded border-b last:border-0 transition-colors"
                           onClick={() => handleSelectResult(result)}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              handleSelectResult(result);
+                            }
+                          }}
                         >
                           <div className="flex-1">
                             <p className="font-medium text-sm">
@@ -399,8 +451,30 @@ const Page = () => {
                       ))}
                     </div>
                   ) : (
-                    <div className="p-4 text-center text-sm text-gray-500">
-                      No records found for "{searchQuery}"
+                    <div className="p-6 text-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <AlertTriangle className="w-8 h-8 text-gray-300" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-700">No Records Found</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            No evaluation records match "{searchQuery}"
+                          </p>
+                          <p className="text-xs text-gray-400 mt-2">
+                            You can proceed to create a new evaluation below
+                          </p>
+                        </div>
+                        <button
+                          className="text-gray-400 hover:text-gray-600 transition-colors mt-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowResults(false);
+                            setSearchQuery("");
+                          }}
+                          aria-label="Close search results"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -636,8 +710,9 @@ const Page = () => {
               className="text-white"
               style={{ backgroundColor: "#2980b9" }}
               onClick={handleProceed}
+              disabled={isLoading}
             >
-              Proceed to Evaluation
+              {isLoading ? "Processing..." : "Proceed to Evaluation"}
             </Button>
           </div>
         </CardContent>
