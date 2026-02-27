@@ -2,23 +2,27 @@
 
 import * as React from "react"
 import {
+  IconBook2,
   IconCamera,
   IconChartBar,
+  IconChecklist,
   IconDashboard,
   IconDatabase,
   IconFileAi,
   IconFileDescription,
   IconFileWord,
   IconFolder,
+  IconGavel,
   IconHelp,
   IconInnerShadowTop,
   IconListDetails,
   IconReport,
+  IconReportAnalytics,
   IconSearch,
   IconSettings,
   IconUsers,
 } from "@tabler/icons-react"
-
+import Image from "next/image"
 import { NavDocuments } from "@/components/nav-documents"
 import { NavMain } from "@/components/nav-main"
 import { NavSecondary } from "@/components/nav-secondary"
@@ -46,24 +50,24 @@ const data = {
       icon: IconDashboard,
     },
     {
-      title: "Lifecycle",
+      title: "CMO",
       url: "#",
-      icon: IconListDetails,
+      icon: IconGavel,
     },
     {
-      title: "Analytics",
+      title: "Program",
       url: "#",
-      icon: IconChartBar,
+      icon: IconBook2,
     },
     {
-      title: "Projects",
+      title: "Evaluation Checklist",
       url: "#",
-      icon: IconFolder,
+      icon: IconChecklist,
     },
     {
-      title: "Team",
+      title: "Reports",
       url: "#",
-      icon: IconUsers,
+      icon: IconReportAnalytics,
     },
   ],
   navClouds: [
@@ -156,22 +160,23 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              className="data-[slot=sidebar-menu-button]:!p-1.5"
-            >
-              <a href="#">
-                <IconInnerShadowTop className="!size-5" />
-                <span className="text-base font-semibold">Acme Inc.</span>
-              </a>
-            </SidebarMenuButton>
+             <div className="flex items-center gap-3">
+                              <div className="flex h-20 w-20 items-center justify-center rounded-md text-sm font-semibold">
+                                  <Image src="/ched-logo.png" alt="CHED Logo" width={50} height={50} />
+                              </div>
+          
+                              <div className="leading-tight">
+                                  <h1 className="text-sm font-medium">
+                                      COMMISSION ON HIGHER EDUCATION - REGIONAL OFFICE XIII
+                                  </h1>
+                              
+                              </div>
+                          </div>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
-        <NavDocuments items={data.documents} />
-        <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={data.user} />

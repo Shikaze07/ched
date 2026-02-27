@@ -806,3 +806,25 @@ export function getAssociatedPrograms(cmoIds: string[]): string[] {
 export function getProgramOptionsByIds(programIds: string[]) {
   return programOptions.filter((option) => programIds.includes(option.value));
 }
+
+export function getAssociatedCMOs(programIds: string[]): string[] {
+  const associatedCMOIds = new Set<string>();
+
+  programIds.forEach((programId) => {
+    mockCMOs.forEach((cmo) => {
+      if (cmo.programs.includes(programId)) {
+        associatedCMOIds.add(cmo.id);
+      }
+    });
+  });
+
+  return Array.from(associatedCMOIds);
+}
+
+export function getCMOOptionsByIds(cmoIds: string[]) {
+  const cmoOptionsArray = mockCMOs.map((cmo) => ({
+    value: cmo.id,
+    label: `${cmo.cmo_number} - ${cmo.title}`,
+  }));
+  return cmoOptionsArray.filter((option) => cmoIds.includes(option.value));
+}

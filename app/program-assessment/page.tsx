@@ -19,7 +19,9 @@ import {
   mockCMOs,
   programOptions,
   getAssociatedPrograms,
-  getProgramOptionsByIds
+  getProgramOptionsByIds,
+  getAssociatedCMOs,
+  getCMOOptionsByIds
 } from "@/lib/mockData";
 import { Info, Search, X, AlertTriangle } from "lucide-react";
 import { evaluationStore, EvaluationRecord } from "@/lib/evaluation-store";
@@ -89,13 +91,56 @@ const Page = () => {
     }
   }, [selectedCMOs]);
 
-  const handleSearch = () => {
+  // Auto-populate CMOs when programs are selected
+  useEffect(() => {
+    if (selectedPrograms.length > 0) {
+      const programIds = selectedPrograms.map((program) => program.value);
+      const associatedCMOIds = getAssociatedCMOs(programIds);
+      const associatedCMOOptions = getCMOOptionsByIds(associatedCMOIds);
+
+      // Auto-select ONLY the first associated CMO if one is found
+      if (associatedCMOOptions.length > 0 && selectedCMOs.length === 0) {
+        setSelectedCMOs([associatedCMOOptions[0]]);
+      }
+    }
+  }, [selectedPrograms, selectedCMOs]);
+
+  const handleSearch = async () => {
     if (!searchQuery.trim()) return;
-    const results = evaluationStore.searchRecords(searchQuery);
-    setSearchResults(results);
-    setShowResults(true);
-    if (results.length === 0) {
-      toast.error("No records found for that search query.");
+    
+    try {
+      // First try database
+      const response = await fetch(
+        `/api/evaluation/search?q=${encodeURIComponent(searchQuery)}`
+      );
+      
+      let results: EvaluationRecord[] = [];
+      
+      if (response.ok) {
+        results = await response.json();
+      }
+      
+      // Fall back to local store if API fails or returns empty
+      if (results.length === 0) {
+        results = evaluationStore.searchRecords(searchQuery);
+      }
+      
+      setSearchResults(results);
+      setShowResults(true);
+      
+      if (results.length === 0) {
+        toast.error("No records found for that search query.");
+      }
+    } catch (error) {
+      console.error("Search error:", error);
+      // Fall back to local store
+      const results = evaluationStore.searchRecords(searchQuery);
+      setSearchResults(results);
+      setShowResults(true);
+      
+      if (results.length === 0) {
+        toast.error("No records found for that search query.");
+      }
     }
   };
 
@@ -193,16 +238,45 @@ const Page = () => {
     saveAndNavigate(record);
   };
 
-  const saveAndNavigate = (record: EvaluationRecord) => {
-    // Save to store
-    evaluationStore.saveRecord(record);
+  const saveAndNavigate = async (record: EvaluationRecord) => {
+    try {
+      // Save to database via API
+      const response = await fetch("/api/evaluation", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          personnelName: record.personnelName,
+          position: record.position,
+          email: record.email,
+          institution: record.institution,
+          academicYear: record.academicYear,
+          selectedCMOs: record.selectedCMOs,
+          selectedPrograms: record.selectedPrograms,
+          refNo: record.refNo,
+          orNumber: record.orNumber,
+          dateOfEvaluation: record.dateOfEvaluation,
+        }),
+      });
 
-    // Store form data in sessionStorage for current evaluation session
-    sessionStorage.setItem("evaluationData", JSON.stringify(record));
+      if (!response.ok) {
+        throw new Error("Failed to save evaluation record");
+      }
 
-    // Navigate to evaluation page
-    toast.success("Proceeding to evaluation checklist...");
-    router.push(`/evaluation/${record.refNo}`);
+      // Also save to local store for offline access
+      evaluationStore.saveRecord(record);
+
+      // Store form data in sessionStorage for current evaluation session
+      sessionStorage.setItem("evaluationData", JSON.stringify(record));
+
+      // Navigate to evaluation page
+      toast.success("Evaluation record saved! Proceeding to checklist...");
+      router.push(`/evaluation/${record.refNo}`);
+    } catch (error) {
+      console.error("Error saving evaluation record:", error);
+      toast.error("Failed to save evaluation record. Please try again.");
+    }
   };
 
   const generateRefNo = () => {
@@ -217,6 +291,22 @@ const Page = () => {
 
   const handleApplySuggestedPrograms = () => {
     setSelectedPrograms(suggestedPrograms);
+  };
+
+  // Search handler for CMOs (async)
+  const handleSearchCMO = async (value: string) => {
+    const filtered = cmoOptions.filter((option) =>
+      option.label.toLowerCase().includes(value.toLowerCase())
+    );
+    return filtered;
+  };
+
+  // Search handler for Programs (async)
+  const handleSearchProgram = async (value: string) => {
+    const filtered = programOptions.filter((option) =>
+      option.label.toLowerCase().includes(value.toLowerCase())
+    );
+    return filtered;
   };
 
   return (
@@ -445,11 +535,13 @@ const Page = () => {
                 <MultipleSelector
                   value={selectedCMOs}
                   onChange={setSelectedCMOs}
-                  defaultOptions={cmoOptions}
+                  options={cmoOptions}
                   placeholder="Select a CMO..."
                   maxSelected={1}
                   hidePlaceholderWhenSelected={true}
                   hideClearAllButton={true}
+                  onSearch={handleSearchCMO}
+                  triggerSearchOnFocus={true}
                   emptyIndicator={
                     <p className="text-center text-sm text-muted-foreground py-6">
                       No CMOs found.
@@ -465,12 +557,14 @@ const Page = () => {
                 <MultipleSelector
                   value={selectedPrograms}
                   onChange={setSelectedPrograms}
-                  defaultOptions={programOptions}
+                  options={programOptions}
                   placeholder="Select a program..."
                   maxSelected={1}
                   hidePlaceholderWhenSelected={true}
                   hideClearAllButton={true}
                   creatable
+                  onSearch={handleSearchProgram}
+                  triggerSearchOnFocus={true}
                   emptyIndicator={
                     <p className="text-center text-sm text-muted-foreground py-6">
                       No programs found. Press Enter to add custom program.

@@ -31,6 +31,7 @@ import { evaluationStore, EvaluationRecord } from "@/lib/evaluation-store";
 import RichTextEditor from "../../../components/rich-text-editor";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import pusher from "@/lib/pusher";
 
 interface EvaluationData {
   personnelName: string;
@@ -77,7 +78,7 @@ const RequirementRow = React.memo(({
   return (
     <tr className="border-b hover:bg-gray-50">
       {/* Description */}
-      <td className="p-2 border align-top max-w-0 w-[15%]">
+      <td className="p-2 border align-top max-w-0 w-[12.5%]">
         <div className="mb-2">
           <Badge variant="outline" className="text-[9px] py-0 px-1 bg-blue-50 text-blue-700 border-blue-200 uppercase font-semibold">
             {requirement.cmo_number.split(',')[0]}
@@ -92,7 +93,7 @@ const RequirementRow = React.memo(({
       </td>
 
       {/* Required Evidence */}
-      <td className="p-2 border align-top max-w-0 w-[15%]">
+      <td className="p-2 border align-top max-w-0 w-[12.5%]">
         <div
           dangerouslySetInnerHTML={{
             __html: requirement.required_evidence,
@@ -102,7 +103,7 @@ const RequirementRow = React.memo(({
       </td>
 
       {/* Actual Situation */}
-      <td className="p-2 border align-top max-w-0 w-[20%]">
+      <td className="p-2 border align-top max-w-0 w-[12.5%]">
         <div className="relative group min-h-[40px]">
           <Button
             size="sm"
@@ -130,7 +131,7 @@ const RequirementRow = React.memo(({
       </td>
 
       {/* Google Link */}
-      <td className="p-2 border align-top max-w-0 w-[15%]">
+      <td className="p-2 border align-top max-w-0 w-[12.5%]">
         <div className="relative group min-h-[40px]">
           <Button
             size="sm"
@@ -164,7 +165,7 @@ const RequirementRow = React.memo(({
       </td>
 
       {/* HEI Compliance */}
-      <td className="p-2 border align-top w-[10%]">
+      <td className="p-2 border align-top w-[12.5%]">
         <Select
           value={response?.hei_compliance || ""}
           onValueChange={(value) => onComplianceChange(requirement.id, "hei_compliance", value)}
@@ -173,14 +174,14 @@ const RequirementRow = React.memo(({
             <SelectValue placeholder="Select" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="Complied">C</SelectItem>
-            <SelectItem value="Not Complied">NC</SelectItem>
+            <SelectItem value="Complied">Complied</SelectItem>
+            <SelectItem value="Not Complied">Not Complied</SelectItem>
           </SelectContent>
         </Select>
       </td>
 
       {/* CHED Compliance */}
-      <td className="p-2 border align-top w-[10%]">
+      <td className="p-2 border align-top w-[12.5%]">
         <Select
           value={response?.ched_compliance || ""}
           onValueChange={(value) => onComplianceChange(requirement.id, "ched_compliance", value)}
@@ -189,14 +190,14 @@ const RequirementRow = React.memo(({
             <SelectValue placeholder="Select" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="Complied">C</SelectItem>
-            <SelectItem value="Not Complied">NC</SelectItem>
+            <SelectItem value="Complied">Complied</SelectItem>
+            <SelectItem value="Not Complied">Not Complied</SelectItem>
           </SelectContent>
         </Select>
       </td>
 
       {/* Is Link Accessible? */}
-      <td className="p-2 border align-top w-[8%]">
+      <td className="p-2 border align-top w-[12.5%]">
         <Select
           value={response?.link_accessible || ""}
           onValueChange={(value) => onComplianceChange(requirement.id, "link_accessible", value)}
@@ -212,7 +213,7 @@ const RequirementRow = React.memo(({
       </td>
 
       {/* CHED Remarks */}
-      <td className="p-2 border align-top max-w-0 w-[7%]">
+      <td className="p-2 border align-top max-w-0 w-[12.5%]">
         <div className="relative group min-h-[30px]">
           <Button
             size="sm"
@@ -314,29 +315,85 @@ const EvaluationPage = () => {
       );
       setMergedSections(merged);
 
-      // Load existing responses if any
-      const existingRecord = evaluationStore.getRecordByRefNo(data.refNo);
-      if (existingRecord && (existingRecord as any).responses) {
-        setResponses((existingRecord as any).responses);
-      }
+      // Load existing responses from database
+      const loadResponsesFromDatabase = async () => {
+        try {
+          const response = await fetch(
+            `/api/evaluation/responses?refNo=${encodeURIComponent(data.refNo)}`
+          );
+          if (response.ok) {
+            const dbResponses = await response.json();
+            setResponses(dbResponses);
+          } else {
+            // Fall back to local store if database fetch fails
+            const existingRecord = evaluationStore.getRecordByRefNo(data.refNo);
+            if (existingRecord && (existingRecord as any).responses) {
+              setResponses((existingRecord as any).responses);
+            }
+          }
+        } catch (error) {
+          console.error("Error loading responses from database:", error);
+          // Fall back to local store
+          const existingRecord = evaluationStore.getRecordByRefNo(data.refNo);
+          if (existingRecord && (existingRecord as any).responses) {
+            setResponses((existingRecord as any).responses);
+          }
+        }
+      };
+
+      loadResponsesFromDatabase();
+
+      // Subscribe to real-time updates via Pusher
+      const channel = pusher.subscribe(`evaluation-${data.refNo}`);
+      
+      channel.bind("response-updated", (newResponses: Record<string, any>) => {
+        console.log("Received real-time update:", newResponses);
+        setResponses(newResponses);
+      });
+
+      // Cleanup subscription on unmount or refNo change
+      return () => {
+        pusher.unsubscribe(`evaluation-${data.refNo}`);
+      };
     } else {
       // Redirect back if no data
       router.push("/");
     }
-  }, [router]);
+  }, [router, refNo]);
 
-  // Auto-save whenever responses change
-  useEffect(() => {
-    if (evaluationData && Object.keys(responses).length > 0) {
-      const updatedRecord = {
-        ...evaluationData,
-        responses: responses,
-        timestamp: Date.now(),
-      };
-      evaluationStore.saveRecord(updatedRecord as any);
+  // Don't save to local storage - only keep in memory
+  // useEffect(() => {
+  //   if (!evaluationData) return;
+  //   evaluationStore.saveRecord(updatedRecord as any);
+  // }, [responses, evaluationData]);
 
+  // Function to save responses to database and publish to Pusher
+  const saveResponsesToDatabase = async () => {
+    if (!evaluationData) return false;
+
+    try {
+      const response = await fetch("/api/evaluation/responses", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          refNo: evaluationData.refNo,
+          responses: responses,
+          publishUpdate: true, // Flag to trigger Pusher broadcast
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save");
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error saving to database:", error);
+      return false;
     }
-  }, [responses, evaluationData]);
+  };
 
   const copyRefNo = () => {
     if (typeof window !== "undefined") {
@@ -357,12 +414,13 @@ const EvaluationPage = () => {
     });
   }, []);
 
-  const handleSaveEdit = () => {
-    if (currentEdit) {
-      setResponses((prev) => ({
-        ...prev,
+  const handleSaveEdit = async () => {
+    if (currentEdit && evaluationData) {
+      // Update responses with the new edit
+      const updatedResponses = {
+        ...responses,
         [currentEdit.requirementId]: {
-          ...(prev[currentEdit.requirementId] || {
+          ...(responses[currentEdit.requirementId] || {
             requirement_id: currentEdit.requirementId,
             actual_situation: "",
             google_link: "",
@@ -373,10 +431,34 @@ const EvaluationPage = () => {
           }),
           [currentEdit.field]: currentEdit.value,
         },
-      }));
+      };
+
+      setResponses(updatedResponses);
       setIsModalOpen(false);
-      // Toast for modal save is okay as it's a discrete action
-      toast.success("Changes saved!");
+
+      // Save to database immediately when user clicks save in modal
+      try {
+        const response = await fetch("/api/evaluation/responses", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            refNo: evaluationData.refNo,
+            responses: updatedResponses,
+            publishUpdate: true,
+          }),
+        });
+
+        if (response.ok) {
+          toast.success("Changes saved!");
+        } else {
+          toast.error("Failed to save changes");
+        }
+      } catch (error) {
+        console.error("Error saving modal changes:", error);
+        toast.error("Error saving changes");
+      }
     }
   };
 
@@ -385,35 +467,65 @@ const EvaluationPage = () => {
     field: "hei_compliance" | "ched_compliance" | "link_accessible",
     value: string
   ) => {
-    setResponses((prev) => ({
-      ...prev,
-      [requirementId]: {
-        ...(prev[requirementId] || {
-          requirement_id: requirementId,
-          actual_situation: "",
-          google_link: "",
-          hei_compliance: "",
-          ched_compliance: "",
-          link_accessible: "",
-          ched_remarks: "",
-        }),
-        [field]: value,
-      },
-    }));
-  }, []);
-
-  const handleSubmit = () => {
-    // Final save before submission
-    if (evaluationData) {
-      const updatedRecord = {
-        ...evaluationData,
-        responses: responses,
-        timestamp: Date.now(),
+    setResponses((prev) => {
+      const updatedResponses = {
+        ...prev,
+        [requirementId]: {
+          ...(prev[requirementId] || {
+            requirement_id: requirementId,
+            actual_situation: "",
+            google_link: "",
+            hei_compliance: "",
+            ched_compliance: "",
+            link_accessible: "",
+            ched_remarks: "",
+          }),
+          [field]: value,
+        },
       };
-      evaluationStore.saveRecord(updatedRecord as any);
 
-      toast.success("Evaluation submitted successfully!");
-      router.push("/program-assessment");
+      // Save to database immediately when compliance changes
+      if (evaluationData) {
+        const saveToDb = async () => {
+          try {
+            const response = await fetch("/api/evaluation/responses", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                refNo: evaluationData.refNo,
+                responses: updatedResponses,
+                publishUpdate: true,
+              }),
+            });
+
+            if (!response.ok) {
+              console.error("Failed to save compliance change");
+            }
+          } catch (error) {
+            console.error("Error saving compliance change:", error);
+          }
+        };
+
+        saveToDb();
+      }
+
+      return updatedResponses;
+    });
+  }, [evaluationData]);
+
+  const handleSubmit = async () => {
+    // Save to database before submission
+    if (evaluationData) {
+      const saved = await saveResponsesToDatabase();
+
+      if (saved) {
+        toast.success("Evaluation saved and submitted successfully!");
+        router.push("/program-assessment");
+      } else {
+        toast.error("Failed to save evaluation. Please try again.");
+      }
     }
   };
 
@@ -524,14 +636,14 @@ const EvaluationPage = () => {
                 <table className="w-full text-sm table-fixed min-w-[1000px]">
                   <thead className="bg-green-100">
                     <tr>
-                      <th className="p-2 text-left border w-[15%]">Description</th>
-                      <th className="p-2 text-left border w-[15%]">Required Evidence</th>
-                      <th className="p-2 text-left border w-[20%]">Actual Situation</th>
-                      <th className="p-2 text-left border w-[15%]">Google Link</th>
-                      <th className="p-2 text-center border w-[10%]">HEI Compliance</th>
-                      <th className="p-2 text-center border w-[10%]">CHED Compliance</th>
-                      <th className="p-2 text-center border w-[8%]">Link Accessible</th>
-                      <th className="p-2 text-left border w-[7%]">Remarks</th>
+                      <th className="p-2 text-left border w-[12.5%]">Description</th>
+                      <th className="p-2 text-left border w-[12.5%]">Required Evidence</th>
+                      <th className="p-2 text-left border w-[12.5%]">Actual Situation</th>
+                      <th className="p-2 text-left border w-[12.5%]">Google Link</th>
+                      <th className="p-2 text-center border w-[12.5%]">HEI Compliance</th>
+                      <th className="p-2 text-center border w-[12.5%]">CHED Compliance</th>
+                      <th className="p-2 text-center border w-[12.5%]">Link Accessible</th>
+                      <th className="p-2 text-left border w-[12.5%]">Remarks</th>
                     </tr>
                   </thead>
                   <tbody>

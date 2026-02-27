@@ -21,6 +21,7 @@ export const metadata: Metadata = {
 };
 
 import { Toaster } from "sonner";
+import LayoutWrapper from "@/components/layoutWrapper";
 
 export default function RootLayout({
   children,
@@ -34,8 +35,10 @@ export default function RootLayout({
       >
 
         <Providers>
-          <NavHeader />
-          {children}
+        <LayoutWrapper>
+        {children}
+        </LayoutWrapper>
+  
           <Toaster position="top-right" richColors />
         </Providers>
 

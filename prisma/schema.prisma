@@ -6,38 +6,34 @@ generator client {
 datasource db {
   provider = "mysql"
 }
+
 model User {
-  id            String    @id
+  id            String    @id @default(cuid())
   name          String
-  email         String
+  email         String    @unique
   emailVerified Boolean
   image         String?
-  createdAt     DateTime
-  updatedAt     DateTime
+  isAdmin       Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
   sessions      Session[]
   accounts      Account[]
-
-  @@unique([email])
-  @@map("user")
 }
 
 model Session {
-  id        String   @id
+  id        String   @id @default(cuid())
   expiresAt DateTime
-  token     String
-  createdAt DateTime
-  updatedAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   ipAddress String?
   userAgent String?
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([token])
-  @@map("session")
 }
 
 model Account {
-  id                    String    @id
+  id                    String    @id @default(cuid())
   accountId             String
   providerId            String
   userId                String
@@ -49,19 +45,97 @@ model Account {
   refreshTokenExpiresAt DateTime?
   scope                 String?
   password              String?
-  createdAt             DateTime
-  updatedAt             DateTime
-
-  @@map("account")
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 }
 
 model Verification {
-  id         String    @id
+  id         String    @id @default(cuid())
   identifier String
   value      String
   expiresAt  DateTime
-  createdAt  DateTime?
-  updatedAt  DateTime?
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+}
 
-  @@map("verification")
+// ==== CMO / program / evaluation models ====
+
+model Cmo {
+  id        String     @id @default(cuid()) @db.VarChar(25)
+  cmoNumber String
+  title     String
+  year      Int
+  programs  CmoProgram[]
+  sections  Section[]
+  requirements Requirement[]
+}
+
+model Program {
+  id          String       @id @default(cuid()) @db.VarChar(25)
+  code        String
+  name        String
+  cmoPrograms CmoProgram[]
+}
+
+model CmoProgram {
+  id        String   @id @default(cuid()) @db.VarChar(25)
+  cmoId     String   @db.VarChar(25)
+  programId String   @db.VarChar(25)
+
+  cmo     Cmo     @relation(fields: [cmoId], references: [id], onDelete: Cascade)
+  program Program @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@unique([cmoId, programId])
+}
+
+model Section {
+  id            String        @id @default(cuid()) @db.VarChar(25)
+  cmoId         String        @db.VarChar(25)
+  cmo           Cmo           @relation(fields: [cmoId], references: [id], onDelete: Cascade)
+  sectionNumber String
+  sectionTitle  String
+  sortOrder     Int
+  requirements  Requirement[]
+}
+
+model Requirement {
+  id               String               @id @default(cuid()) @db.VarChar(25)
+  cmoId            String               @db.VarChar(25)
+  sectionId        String               @db.VarChar(25)
+  cmo              Cmo                  @relation(fields: [cmoId], references: [id], onDelete: Cascade)
+  section          Section              @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  description      String
+  requiredEvidence String
+  sortOrder        Int
+  responses        EvaluationResponse[]
+}
+
+model EvaluationResponse {
+  id                String     @id @default(cuid()) @db.VarChar(25)
+  requirementId     String     @db.VarChar(25)
+  evaluationId      String?    @db.VarChar(25)
+  requirement       Requirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  evaluation        EvaluationRecord? @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  actualSituation   String
+  googleLink        String
+  heiCompliance     String
+  chedCompliance    String
+  linkAccessible    String
+  chedRemarks       String
+}
+
+model EvaluationRecord {
+  id               String   @id @default(cuid()) @db.VarChar(25)
+  personnelName    String
+  position         String
+  email            String
+  institution      String
+  academicYear     String
+  selectedCMOs     Json
+  selectedPrograms Json
+  refNo            String   @unique
+  orNumber         String
+  dateOfEvaluation DateTime
+  timestamp        DateTime @default(now())
+  responses        EvaluationResponse[]
 }
