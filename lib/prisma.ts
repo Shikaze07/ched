@@ -15,6 +15,11 @@ const dbConfig: PoolConfig = {
   database: process.env.DATABASE_NAME,
   port: parseInt(process.env.DATABASE_PORT as string, 10),
   connectionLimit: process.env.DATABASE_POOL_SIZE ? parseInt(process.env.DATABASE_POOL_SIZE, 10) : 10,
+  // Remote Railway DB needs more time to acquire/establish connections
+  acquireTimeout: 30000,   // 30s to get a connection from pool
+  connectTimeout: 20000,   // 20s to establish a new TCP connection
+  idleTimeout: 60000,      // Keep idle connections alive for 60s
+  minimumIdle: 2,          // Always keep 2 connections warm
 };
 
 const adapter = new PrismaMariaDb(dbConfig);

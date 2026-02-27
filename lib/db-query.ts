@@ -1,6 +1,6 @@
 import { prisma } from './prisma';
 
-const QUERY_TIMEOUT_MS = 8000;
+const QUERY_TIMEOUT_MS = 25000; // Remote Railway DB needs more time
 
 type QueryFunction<T> = () => Promise<T>;
 
@@ -13,11 +13,10 @@ export async function executeQuery<T>(
   timeoutMs: number = QUERY_TIMEOUT_MS
 ): Promise<T> {
   let timeoutId: NodeJS.Timeout | null = null;
-  
-  // Ensure connection before attempting the query
-  await ensureConnection();
 
-  // Attempt the query and on pool-timeout try one reconnect+retry
+  // NOTE: We do NOT call ensureConnection() here eagerly — doing so
+  // consumes a pool connection before the actual query runs, which
+  // exhausts the pool. Connection recovery is handled in the catch block.
   let attempt = 0;
   const maxAttempts = 2;
 
@@ -65,7 +64,7 @@ export async function executeQuery<T>(
       throw error;
     }
   }
-  
+
   // Should not reach here
   throw new Error('Unexpected query execution flow');
 }
