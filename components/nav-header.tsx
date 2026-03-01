@@ -1,7 +1,14 @@
+"use client"
+
 import { Button } from "./ui/button";
 import Image from "next/image";
+import Link from "next/link";
+import { authClient } from "@/lib/auth-client";
 
 export default function NavHeader() {
+    const { data: session } = authClient.useSession();
+    const isLoggedIn = !!session;
+
     return (
         <header className="sticky top-0 z-50 border-b"
             style={{ backgroundColor: '#2980b9' }}>
@@ -23,9 +30,19 @@ export default function NavHeader() {
                 </div>
 
                 {/* Right side */}
-                <Button className="text-white" variant="ghost" size="sm">
-                    Login
-                </Button>
+                {isLoggedIn ? (
+                    <Link href="/admin/dashboard">
+                        <Button className="text-white" variant="ghost" size="sm">
+                            Go back to Dashboard
+                        </Button>
+                    </Link>
+                ) : (
+                    <Link href="/login">
+                        <Button className="text-white" variant="ghost" size="sm">
+                            Login
+                        </Button>
+                    </Link>
+                )}
             </div>
         </header>
     );

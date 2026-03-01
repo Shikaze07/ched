@@ -112,33 +112,33 @@ const Page = () => {
       toast.error("Please enter a search query");
       return;
     }
-    
+
     setIsSearching(true);
     try {
       // First try database with timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
-      
+
       const response = await fetch(
         `/api/evaluation/search?q=${encodeURIComponent(searchQuery)}`,
         { signal: controller.signal }
       );
       clearTimeout(timeoutId);
-      
+
       let results: EvaluationRecord[] = [];
-      
+
       if (response.ok) {
         results = await response.json();
       }
-      
+
       // Fall back to local store if API fails or returns empty
       if (results.length === 0) {
         results = evaluationStore.searchRecords(searchQuery);
       }
-      
+
       setSearchResults(results);
       setShowResults(true);
-      
+
       if (results.length === 0) {
         toast.error("No records found for that search query.");
       } else {
@@ -146,7 +146,7 @@ const Page = () => {
       }
     } catch (error: any) {
       console.error("Search error:", error);
-      
+
       // Check if it's a timeout error
       if (error.name === 'AbortError') {
         toast.error("Search timed out. Please try again.");
@@ -155,7 +155,7 @@ const Page = () => {
         const results = evaluationStore.searchRecords(searchQuery);
         setSearchResults(results);
         setShowResults(true);
-        
+
         if (results.length === 0) {
           toast.error("No records found for that search query.");
         }

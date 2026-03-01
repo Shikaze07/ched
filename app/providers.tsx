@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import type { ReactNode } from "react"
 
-import {authClient} from "@/lib/auth-client"
+import { authClient } from "@/lib/auth-client"
 import { usePathname } from 'next/navigation'
 
 export function Providers({ children }: { children: ReactNode }) {
@@ -17,16 +17,14 @@ export function Providers({ children }: { children: ReactNode }) {
             authClient={authClient}
             navigate={router.push}
             replace={router.replace}
-            onSessionChange={() => {
+            onSessionChange={async () => {
                 // Clear router cache (protected routes)
                 router.refresh()
-                // If user just signed in via the auth UI, redirect them to dashboard
-                try {
-                    if (pathname && pathname.startsWith('/auth')) {
-                        router.push('/dashboard')
-                    }
-                } catch (e) {
-                    // noop
+
+                // If user just signed in via auth page, redirect them to admin dashboard
+                const { data: session } = await authClient.getSession()
+                if (session && pathname?.startsWith('/auth')) {
+                    router.push('/admin/dashboard')
                 }
             }}
             Link={Link}

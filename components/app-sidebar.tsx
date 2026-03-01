@@ -46,27 +46,33 @@ const data = {
   navMain: [
     {
       title: "Dashboard",
-      url: "#",
+      url: "/admin/dashboard",
       icon: IconDashboard,
     },
     {
+      title: "Evaluations",
+      url: "/admin/evaluation",
+      icon: IconChecklist,
+    },
+    {
+      title: "Evaluation Checklist",
+      url: "/admin/evaluation-checklist",
+      icon: IconChecklist,
+    },
+    {
       title: "CMO",
-      url: "#",
+      url: "/admin/cmo",
       icon: IconGavel,
     },
     {
       title: "Program",
-      url: "#",
+      url: "/admin/program",
       icon: IconBook2,
     },
-    {
-      title: "Evaluation Checklist",
-      url: "#",
-      icon: IconChecklist,
-    },
+
     {
       title: "Reports",
-      url: "#",
+      url: "/admin/report",
       icon: IconReportAnalytics,
     },
   ],
@@ -160,18 +166,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-             <div className="flex items-center gap-3">
-                              <div className="flex h-20 w-20 items-center justify-center rounded-md text-sm font-semibold">
-                                  <Image src="/ched-logo.png" alt="CHED Logo" width={50} height={50} />
-                              </div>
-          
-                              <div className="leading-tight">
-                                  <h1 className="text-sm font-medium">
-                                      COMMISSION ON HIGHER EDUCATION - REGIONAL OFFICE XIII
-                                  </h1>
-                              
-                              </div>
-                          </div>
+            <div className="flex items-center gap-3">
+              <div className="flex h-20 w-20 items-center justify-center rounded-md text-sm font-semibold">
+                <Image src="/ched-logo.png" alt="CHED Logo" width={50} height={50} />
+              </div>
+
+              <div className="leading-tight">
+                <h1 className="text-sm font-medium">
+                  COMMISSION ON HIGHER EDUCATION - REGIONAL OFFICE XIII
+                </h1>
+
+              </div>
+            </div>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>

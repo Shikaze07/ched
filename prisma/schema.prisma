@@ -62,10 +62,11 @@ model Verification {
 
 model Cmo {
   id        String     @id @default(cuid()) @db.VarChar(25)
-  cmoNumber String
+  number    String
   title     String
-  year      Int
-  programs  CmoProgram[]
+  series    Int
+  programId String?    @unique @db.VarChar(25)
+  program   Program?   @relation(fields: [programId], references: [id])
   sections  Section[]
   requirements Requirement[]
 }
@@ -74,18 +75,7 @@ model Program {
   id          String       @id @default(cuid()) @db.VarChar(25)
   code        String
   name        String
-  cmoPrograms CmoProgram[]
-}
-
-model CmoProgram {
-  id        String   @id @default(cuid()) @db.VarChar(25)
-  cmoId     String   @db.VarChar(25)
-  programId String   @db.VarChar(25)
-
-  cmo     Cmo     @relation(fields: [cmoId], references: [id], onDelete: Cascade)
-  program Program @relation(fields: [programId], references: [id], onDelete: Cascade)
-
-  @@unique([cmoId, programId])
+  cmo         Cmo?
 }
 
 model Section {

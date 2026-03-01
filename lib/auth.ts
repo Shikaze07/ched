@@ -13,6 +13,15 @@ export const auth = betterAuth({
         enabled: true,
         requireEmailVerification: false
     },
+    user: {
+        additionalFields: {
+            isAdmin: {
+                type: "boolean",
+                required: false,
+                defaultValue: false,
+            }
+        }
+    },
     plugins: [
         nextCookies()
     ]
