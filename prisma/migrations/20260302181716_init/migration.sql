@@ -62,10 +62,12 @@ CREATE TABLE `Verification` (
 -- CreateTable
 CREATE TABLE `Cmo` (
     `id` VARCHAR(25) NOT NULL,
-    `cmoNumber` VARCHAR(191) NOT NULL,
+    `number` VARCHAR(191) NOT NULL,
     `title` VARCHAR(191) NOT NULL,
-    `year` INTEGER NOT NULL,
+    `series` INTEGER NOT NULL,
+    `programId` VARCHAR(25) NULL,
 
+    UNIQUE INDEX `Cmo_programId_key`(`programId`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -79,12 +81,10 @@ CREATE TABLE `Program` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `CmoProgram` (
+CREATE TABLE `Institution` (
     `id` VARCHAR(25) NOT NULL,
-    `cmoId` VARCHAR(25) NOT NULL,
-    `programId` VARCHAR(25) NOT NULL,
+    `name` VARCHAR(191) NOT NULL,
 
-    UNIQUE INDEX `CmoProgram_cmoId_programId_key`(`cmoId`, `programId`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -152,10 +152,7 @@ ALTER TABLE `Session` ADD CONSTRAINT `Session_userId_fkey` FOREIGN KEY (`userId`
 ALTER TABLE `Account` ADD CONSTRAINT `Account_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `User`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `CmoProgram` ADD CONSTRAINT `CmoProgram_cmoId_fkey` FOREIGN KEY (`cmoId`) REFERENCES `Cmo`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `CmoProgram` ADD CONSTRAINT `CmoProgram_programId_fkey` FOREIGN KEY (`programId`) REFERENCES `Program`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE `Cmo` ADD CONSTRAINT `Cmo_programId_fkey` FOREIGN KEY (`programId`) REFERENCES `Program`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `Section` ADD CONSTRAINT `Section_cmoId_fkey` FOREIGN KEY (`cmoId`) REFERENCES `Cmo`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
@@ -165,9 +162,6 @@ ALTER TABLE `Requirement` ADD CONSTRAINT `Requirement_cmoId_fkey` FOREIGN KEY (`
 
 -- AddForeignKey
 ALTER TABLE `Requirement` ADD CONSTRAINT `Requirement_sectionId_fkey` FOREIGN KEY (`sectionId`) REFERENCES `Section`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `EvaluationResponse` ADD CONSTRAINT `EvaluationResponse_requirementId_fkey` FOREIGN KEY (`requirementId`) REFERENCES `Requirement`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `EvaluationResponse` ADD CONSTRAINT `EvaluationResponse_evaluationId_fkey` FOREIGN KEY (`evaluationId`) REFERENCES `EvaluationRecord`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
