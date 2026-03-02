@@ -39,8 +39,8 @@ import {
 
 const data = {
   user: {
-    name: "shadcn",
-    email: "m@example.com",
+    name: "ched",
+    email: "ched@gmail.com",
     avatar: "/avatars/shadcn.jpg",
   },
   navMain: [
@@ -49,15 +49,16 @@ const data = {
       url: "/admin/dashboard",
       icon: IconDashboard,
     },
+
     {
-      title: "Evaluations",
-      url: "/admin/evaluation",
+      title: "Institution",
+      url: "/admin/institution",
       icon: IconChecklist,
     },
     {
-      title: "Evaluation Checklist",
-      url: "/admin/evaluation-checklist",
-      icon: IconChecklist,
+      title: "Program",
+      url: "/admin/program",
+      icon: IconBook2,
     },
     {
       title: "CMO",
@@ -65,10 +66,27 @@ const data = {
       icon: IconGavel,
     },
     {
-      title: "Program",
-      url: "/admin/program",
-      icon: IconBook2,
+      title: "Evaluations",
+      url: "/admin/evaluation",
+      icon: IconChecklist,
     },
+    {
+      title: "Evaluation Checklist",
+      url: "/admin/evaluation-checklist/list",
+      icon: IconChecklist,
+      isActive: true,
+      items: [
+        {
+          title: "Template List",
+          url: "/admin/evaluation-checklist/list",
+        },
+        {
+          title: "Template Builder",
+          url: "/admin/evaluation-checklist/builder",
+        },
+      ],
+    },
+
 
     {
       title: "Reports",

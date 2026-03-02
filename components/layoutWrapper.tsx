@@ -12,7 +12,7 @@ export default function LayoutWrapper({ children }: Props) {
   const pathname = usePathname()
 
   // Add paths where NavHeader should NOT appear
-  const hideNavOnPaths = [,"/register", "/admin/dashboard", "/admin/evaluation", "/admin/cmo", "/admin/program", "/admin/evaluation-checklist", "/admin/report"]
+  const hideNavOnPaths = [, "/register", "/admin/dashboard", "/admin/evaluation", "/admin/cmo", "/admin/program", "/admin/evaluation-checklist", "/admin/report", "/admin/institution", "/admin/evaluation-checklist/list", "/admin/evaluation-checklist/builder", "/error"]
 
   const shouldHideNav = hideNavOnPaths.includes(pathname) || pathname.startsWith("/evaluation/")
 

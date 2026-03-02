@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
       refNo,
       orNumber,
       dateOfEvaluation,
+      responses, // Array of { requirementId, actualSituation, googleLink, heiCompliance, chedCompliance, linkAccessible, chedRemarks }
     } = body;
 
     // Validate required fields
@@ -40,6 +41,16 @@ export async function POST(request: NextRequest) {
         where: { refNo },
       });
 
+      const responseData = (responses || []).map((resp: any) => ({
+        requirementId: resp.requirementId,
+        actualSituation: resp.actualSituation || "",
+        googleLink: resp.googleLink || "",
+        heiCompliance: resp.heiCompliance || "",
+        chedCompliance: resp.chedCompliance || "",
+        linkAccessible: resp.linkAccessible || "",
+        chedRemarks: resp.chedRemarks || "",
+      }));
+
       if (existingRecord) {
         // Update existing record
         return await prisma.evaluationRecord.update({
@@ -56,6 +67,10 @@ export async function POST(request: NextRequest) {
             dateOfEvaluation: dateOfEvaluation
               ? new Date(dateOfEvaluation)
               : new Date(),
+            responses: {
+              deleteMany: {}, // Clear old responses
+              create: responseData,
+            },
           },
         });
       }
@@ -75,6 +90,9 @@ export async function POST(request: NextRequest) {
           dateOfEvaluation: dateOfEvaluation
             ? new Date(dateOfEvaluation)
             : new Date(),
+          responses: {
+            create: responseData,
+          },
         },
       });
     }, 8000);

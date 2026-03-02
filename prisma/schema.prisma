@@ -78,6 +78,11 @@ model Program {
   cmo         Cmo?
 }
 
+model Institution {
+  id   String @id @default(cuid()) @db.VarChar(25)
+  name String
+}
+
 model Section {
   id            String        @id @default(cuid()) @db.VarChar(25)
   cmoId         String        @db.VarChar(25)

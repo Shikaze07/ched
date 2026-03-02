@@ -21,16 +21,15 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  organizeEvaluationData,
-  type EvaluationResponse,
-  mockCMOs,
-  programOptions,
-  getAssociatedPrograms,
-  getProgramOptionsByIds,
-  getAssociatedCMOs,
-  getCMOOptionsByIds
-} from "@/lib/mockData";
+interface EvaluationResponse {
+  requirement_id: string;
+  actual_situation: string;
+  google_link: string;
+  hei_compliance: "Complied" | "Not Complied" | "";
+  ched_compliance: "Complied" | "Not Complied" | "";
+  link_accessible: "Yes" | "No" | "";
+  ched_remarks: string;
+}
 import { Copy, Plus, ArrowLeft, Save, Info, Pencil, CheckCircle, AlertTriangle } from "lucide-react";
 import { evaluationStore, EvaluationRecord } from "@/lib/evaluation-store";
 import RichTextEditor from "../../../components/rich-text-editor";
@@ -332,50 +331,61 @@ const EvaluationPage = () => {
   const { data: session } = authClient.useSession();
   const isLoggedIn = !!session;
 
-  // Sync Program when CMO changes (similar to program-assessment page)
+  const [allCmos, setAllCmos] = useState<any[]>([]);
+  const [allPrograms, setAllPrograms] = useState<any[]>([]);
+  const [allInstitutions, setAllInstitutions] = useState<any[]>([]);
+
+  // Fetch all metadata once
   useEffect(() => {
-    if (isInfoModalOpen && tempInfoData && tempInfoData.selectedCMOs.length > 0) {
-      const associatedProgramIds = getAssociatedPrograms(tempInfoData.selectedCMOs);
-      const associatedProgramOptions = getProgramOptionsByIds(associatedProgramIds);
+    const fetchMetadata = async () => {
+      try {
+        const [cmoRes, progRes, instRes] = await Promise.all([
+          fetch("/api/cmo"),
+          fetch("/api/programs"),
+          fetch("/api/institution")
+        ]);
+        if (cmoRes.ok) setAllCmos(await cmoRes.json());
+        if (progRes.ok) setAllPrograms(await progRes.json());
+        if (instRes.ok) setAllInstitutions(await instRes.json());
+      } catch (err) {
+        console.error("Error fetching metadata:", err);
+      }
+    };
+    fetchMetadata();
+  }, []);
 
-      if (associatedProgramOptions.length > 0) {
-        // If current program is not in associated programs, auto-select the first one
-        const isCurrentProgramAssociated = associatedProgramOptions.some(
-          opt => opt.label === tempInfoData.program
-        );
+  // Sync Program when CMO changes
+  useEffect(() => {
+    if (isInfoModalOpen && tempInfoData && tempInfoData.selectedCMOs.length > 0 && allCmos.length > 0) {
+      const selectedCmoId = tempInfoData.selectedCMOs[0];
+      const cmoMetadata = allCmos.find(c => c.id === selectedCmoId);
 
-        if (!isCurrentProgramAssociated) {
+      if (cmoMetadata?.programId) {
+        const program = allPrograms.find(p => p.id === cmoMetadata.programId);
+        if (program && tempInfoData.program !== program.name) {
           setTempInfoData(prev => prev ? {
             ...prev,
-            program: associatedProgramOptions[0].label
+            program: program.name
           } : null);
         }
       }
     }
-  }, [tempInfoData?.selectedCMOs, isInfoModalOpen]);
+  }, [tempInfoData?.selectedCMOs, isInfoModalOpen, allCmos, allPrograms]);
 
-  // Sync CMO when Program changes (similar to program-assessment page)
+  // Sync CMO when Program changes
   useEffect(() => {
-    if (isInfoModalOpen && tempInfoData && tempInfoData.program) {
-      // Find the program value/id from label
-      const programOpt = programOptions.find(opt => opt.label === tempInfoData.program);
-      if (programOpt) {
-        const associatedCMOIds = getAssociatedCMOs([programOpt.value]);
+    if (isInfoModalOpen && tempInfoData && tempInfoData.program && allPrograms.length > 0) {
+      const program = allPrograms.find(p => p.name === tempInfoData.program);
+      const cmoMetadata = allCmos.find(c => c.programId === program?.id);
 
-        // If current CMO is not in associated CMOs, auto-select the first one
-        const isCurrentCMOAssociated = tempInfoData.selectedCMOs.some(
-          cmoId => associatedCMOIds.includes(cmoId)
-        );
-
-        if (!isCurrentCMOAssociated && associatedCMOIds.length > 0) {
-          setTempInfoData(prev => prev ? {
-            ...prev,
-            selectedCMOs: [associatedCMOIds[0]]
-          } : null);
-        }
+      if (cmoMetadata && !tempInfoData.selectedCMOs.includes(cmoMetadata.id)) {
+        setTempInfoData(prev => prev ? {
+          ...prev,
+          selectedCMOs: [cmoMetadata.id]
+        } : null);
       }
     }
-  }, [tempInfoData?.program, isInfoModalOpen]);
+  }, [tempInfoData?.program, isInfoModalOpen, allCmos, allPrograms]);
 
   // Notification states
   const [showNotifyDialog, setShowNotifyDialog] = useState(false);
@@ -400,36 +410,69 @@ const EvaluationPage = () => {
   const setupEvaluation = React.useCallback(async (data: EvaluationData) => {
     setEvaluationData(data);
 
-    // Organize CMO data
-    const organized = organizeEvaluationData(data.selectedCMOs);
-    setOrganizedData(organized);
+    // Fetch real CMO data and checklists
+    try {
+      const organized = await Promise.all(data.selectedCMOs.map(async (cmoId) => {
+        // Fetch checklist items (sections and requirements)
+        const checklistRes = await fetch(`/api/cmo/${cmoId}/checklist`);
+        const sections = await checklistRes.json();
 
-    // Merge sections from all CMOs
-    const sectionGroups: Record<string, any> = {};
-    organized.forEach((cmoData) => {
-      cmoData.sections.forEach((section: any) => {
-        const title = section.section_title;
-        if (!sectionGroups[title]) {
-          sectionGroups[title] = {
-            title: title,
-            requirements: [],
-            sort_order: section.sort_order,
-          };
-        }
-        section.requirements.forEach((req: any) => {
-          sectionGroups[title].requirements.push({
-            ...req,
-            cmo_id: cmoData.cmo.id,
-            cmo_number: cmoData.cmo.cmo_number,
+        // Use the metadata we already fetched at the component level
+        const cmoMetadata = allCmos.find((c: any) => c.id === cmoId);
+
+        return {
+          cmo: {
+            id: cmoId,
+            cmo_number: cmoMetadata?.number || "Unknown CMO",
+            title: cmoMetadata?.title || ""
+          },
+          sections: sections.map((s: any) => ({
+            id: s.id,
+            section_number: s.sectionNumber,
+            section_title: s.sectionTitle,
+            sort_order: s.sortOrder,
+            requirements: s.requirements.map((r: any) => ({
+              id: r.id,
+              description: r.description,
+              required_evidence: r.requiredEvidence,
+              sort_order: r.sortOrder
+            }))
+          }))
+        };
+      }));
+
+      setOrganizedData(organized);
+
+      // Merge sections from all CMOs
+      const sectionGroups: Record<string, any> = {};
+      organized.forEach((cmoData) => {
+        cmoData.sections.forEach((section: any) => {
+          const title = section.section_title;
+          if (!sectionGroups[title]) {
+            sectionGroups[title] = {
+              title: title,
+              requirements: [],
+              sort_order: section.sort_order,
+            };
+          }
+          section.requirements.forEach((req: any) => {
+            sectionGroups[title].requirements.push({
+              ...req,
+              cmo_id: cmoData.cmo.id,
+              cmo_number: cmoData.cmo.cmo_number,
+            });
           });
         });
       });
-    });
 
-    const merged = Object.values(sectionGroups).sort(
-      (a, b) => a.sort_order - b.sort_order
-    );
-    setMergedSections(merged);
+      const merged = Object.values(sectionGroups).sort(
+        (a, b) => a.sort_order - b.sort_order
+      );
+      setMergedSections(merged);
+    } catch (error) {
+      console.error("Error setting up evaluation data:", error);
+      toast.error("Failed to load checklist templates from database.");
+    }
 
     // Load existing responses from database
     try {
@@ -463,7 +506,7 @@ const EvaluationPage = () => {
     return () => {
       pusher.unsubscribe(`evaluation-${data.refNo}`);
     };
-  }, [refNo]);
+  }, [allCmos, refNo]);
 
   useEffect(() => {
     let cleanup: (() => void) | undefined;
@@ -995,10 +1038,9 @@ const EvaluationPage = () => {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="university-of-manila">University of Manila</SelectItem>
-                        <SelectItem value="technological-institute">Technological Institute of the Philippines</SelectItem>
-                        <SelectItem value="state-university">Philippine State University</SelectItem>
-                        <SelectItem value="sti-college-koronadal">STI COLLEGE KORONADAL</SelectItem>
+                        {allInstitutions.map(inst => (
+                          <SelectItem key={inst.id} value={inst.name}>{inst.name}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -1032,15 +1074,15 @@ const EvaluationPage = () => {
                   <div className="space-y-2">
                     <Label>CMO</Label>
                     <MultipleSelector
-                      value={mockCMOs
+                      value={allCmos
                         .filter(cmo => tempInfoData.selectedCMOs.includes(cmo.id))
-                        .map(cmo => ({ value: cmo.id, label: `${cmo.cmo_number} - ${cmo.title}` }))
+                        .map(cmo => ({ value: cmo.id, label: `${cmo.number} - ${cmo.title}` }))
                       }
                       onChange={(options) => setTempInfoData({
                         ...tempInfoData,
                         selectedCMOs: options.map(o => o.value)
                       })}
-                      options={mockCMOs.map(cmo => ({ value: cmo.id, label: `${cmo.cmo_number} - ${cmo.title}` }))}
+                      options={allCmos.map(cmo => ({ value: cmo.id, label: `${cmo.number} - ${cmo.title}` }))}
                       placeholder="Select CMOs..."
                       maxSelected={1}
                       hidePlaceholderWhenSelected
@@ -1054,7 +1096,7 @@ const EvaluationPage = () => {
                         ...tempInfoData,
                         program: options.length > 0 ? options[0].label : ""
                       })}
-                      options={programOptions}
+                      options={allPrograms.map(p => ({ value: p.id, label: p.name }))}
                       placeholder="Select Program..."
                       maxSelected={1}
                       creatable
