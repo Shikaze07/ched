@@ -17,7 +17,7 @@ export default async function Page() {
 
   const cmoOptions = cmos.map((cmo) => ({
     value: cmo.id,
-    label: `${cmo.number} - ${cmo.title}`,
+    label: cmo.title,
   }));
 
   const programOptions = programs.map((p) => ({
