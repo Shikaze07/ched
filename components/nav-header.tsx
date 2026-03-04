@@ -1,22 +1,34 @@
 "use client"
 
 import { Button } from "./ui/button";
+import * as motion from "motion/react-client";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 
 export default function NavHeader() {
     const { data: session } = authClient.useSession();
     const isLoggedIn = !!session;
 
+    const pathname = usePathname();
+    const isLoginPage = pathname === "/login";
+
     return (
-        <header className="sticky top-0 z-50 border-b"
-            style={{ backgroundColor: '#2980b9' }}>
+        <header
+            className="sticky top-0 z-50 border-b"
+            style={{ backgroundColor: "#2980b9" }}
+        >
             <div className="flex h-14 items-center justify-between px-4 w-full">
                 {/* Left side */}
                 <div className="flex items-center gap-3">
                     <div className="flex h-9 w-9 items-center justify-center rounded-md text-sm font-semibold">
-                        <Image src="/ched-logo.png" alt="CHED Logo" width={50} height={50} />
+                        <Image
+                            src="/ched-logo.png"
+                            alt="CHED Logo"
+                            width={50}
+                            height={50}
+                        />
                     </div>
 
                     <div className="leading-tight">
@@ -32,18 +44,27 @@ export default function NavHeader() {
                 {/* Right side */}
                 {isLoggedIn ? (
                     <Link href="/admin/dashboard">
-                        <Button className="text-white" variant="ghost" size="sm">
+                        <Button
+                            className="text-white"
+                            variant="ghost"
+                            size="sm"
+                        >
                             Go back to Dashboard
                         </Button>
                     </Link>
                 ) : (
-                    <Link href="/login">
-                        <Button className="text-white" variant="ghost" size="sm">
-                            Login
-                        </Button>
-                    </Link>
-
-
+                    !isLoginPage && (
+                        <Link href="/login">
+                            <Button
+                                className="text-sm transition-none text-white bg-transparent hover:bg-transparent"
+                                asChild
+                            >
+                                <motion.button whileTap={{ scale: 0.85 }}>
+                                    Login
+                                </motion.button>
+                            </Button>
+                        </Link>
+                    )
                 )}
             </div>
         </header>

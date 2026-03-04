@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import Image from "next/image"
 import {
   Card,
   CardContent,
@@ -70,8 +71,11 @@ export function LoginForm({
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
-        <CardHeader className="text-center">
-          <CardTitle className="text-xl">Login to your account</CardTitle>
+        <CardHeader>
+          <div className="flex flex-col justify-center items-center">
+            <Image src="/ched-logo.png" alt="CHED Logo" width={50} height={50} />
+            <CardTitle className="text-xl">Login to your account</CardTitle>
+          </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit}>
@@ -106,7 +110,9 @@ export function LoginForm({
                 />
               </Field>
               <Field className="pt-2">
-                <Button type="submit" className="w-full" disabled={isLoading}>
+                <Button type="submit" className="w-full" disabled={isLoading}
+                  style={{ backgroundColor: '#2980b9' }}
+                >
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />

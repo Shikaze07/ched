@@ -1,13 +1,19 @@
 import { prisma } from "@/lib/prisma";
+import { executeQuery } from "@/lib/db-query";
 import { AssessmentForm } from "./assessment-form";
+
+export const dynamic = 'force-dynamic';
 
 export default async function Page() {
   // Fetch all in parallel on the server — no client round-trip needed
-  const [cmos, programs, institutions] = await Promise.all([
-    prisma.cmo.findMany({ orderBy: { series: "desc" } }),
-    prisma.program.findMany({ orderBy: { name: "asc" } }),
-    prisma.institution.findMany({ orderBy: { name: "asc" } }),
-  ]);
+  // Use executeQuery for better resilience against connection issues in production
+  const [cmos, programs, institutions] = await executeQuery(async () => {
+    return await Promise.all([
+      prisma.cmo.findMany({ orderBy: { series: "desc" } }),
+      prisma.program.findMany({ orderBy: { name: "asc" } }),
+      prisma.institution.findMany({ orderBy: { name: "asc" } }),
+    ]);
+  });
 
   const cmoOptions = cmos.map((cmo) => ({
     value: cmo.id,
