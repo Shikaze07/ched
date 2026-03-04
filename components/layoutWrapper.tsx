@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation"
 import NavHeader from "./nav-header"
 import { ReactNode } from "react"
+import { authClient } from "@/lib/auth-client"
 
 interface Props {
   children: ReactNode
@@ -10,11 +11,20 @@ interface Props {
 
 export default function LayoutWrapper({ children }: Props) {
   const pathname = usePathname()
+  const { data: session } = authClient.useSession()
+  const isAdmin = session?.user?.isAdmin
 
-  // Add paths where NavHeader should NOT appear
-  const hideNavOnPaths = [, "/register", "/admin/dashboard", "/admin/evaluation", "/admin/cmo", "/admin/program", "/admin/evaluation-checklist", "/admin/report", "/admin/institution", "/admin/evaluation-checklist/list", "/admin/evaluation-checklist/builder", "/error"]
+  // Paths where NavHeader should NOT appear for anyone (e.g., Auth pages)
+  const alwaysHideNavOn = ["/register", "/error"]
 
-  const shouldHideNav = hideNavOnPaths.includes(pathname) || pathname.startsWith("/evaluation/")
+  // Logic: 
+  // 1. Always hide on explicit paths
+  // 2. Always hide on /admin routes (they have their own Sidebar/Header)
+  // 3. For /evaluation/ paths, hide ONLY if the user is an admin
+  const shouldHideNav =
+    alwaysHideNavOn.includes(pathname) ||
+    pathname.startsWith("/admin") ||
+    (pathname.startsWith("/evaluation/") && isAdmin)
 
   return (
     <>
