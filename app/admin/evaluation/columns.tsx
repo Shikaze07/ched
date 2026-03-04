@@ -12,15 +12,15 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import Link from "next/link"
-import { EvaluationRecord } from "@prisma/client"
+import { EvaluationWithInstitution } from "./page"
 
-export const columns: ColumnDef<EvaluationRecord>[] = [
+export const columns: ColumnDef<EvaluationWithInstitution>[] = [
     {
         accessorKey: "refNo",
         header: "Ref No",
     },
     {
-        accessorKey: "institution",
+        accessorKey: "institutionName",
         header: "Institution",
     },
     {

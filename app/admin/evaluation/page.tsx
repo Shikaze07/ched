@@ -3,12 +3,24 @@ import { DataTable } from "./data-table"
 import { prisma } from "@/lib/prisma"
 
 async function getData() {
-    return await prisma.evaluationRecord.findMany({
-        orderBy: {
-            timestamp: "desc",
-        },
-    })
+    const [records, institutions] = await Promise.all([
+        prisma.evaluationRecord.findMany({
+            orderBy: {
+                timestamp: "desc",
+            },
+        }),
+        prisma.institution.findMany(),
+    ])
+
+    const instMap = new Map(institutions.map((i) => [i.id, i.name]))
+
+    return records.map((r) => ({
+        ...r,
+        institutionName: instMap.get(r.institution) || r.institution,
+    }))
 }
+
+export type EvaluationWithInstitution = Awaited<ReturnType<typeof getData>>[number]
 
 export default async function EvaluationPage() {
     const data = await getData()

@@ -149,10 +149,10 @@ export default function TemplateListPage() {
 
                                     return (
                                         <TableRow key={cmo.id} className="hover:bg-muted/30 transition-colors group">
-                                            <TableCell className="font-medium">
+                                            <TableCell className="font-medium max-w-[400px]">
                                                 <div className="flex flex-col">
                                                     <span className="text-base">{cmo.number}</span>
-                                                    <span className="text-xs text-muted-foreground line-clamp-1">{cmo.title}</span>
+                                                    <span className="text-xs text-muted-foreground break-words whitespace-normal leading-normal">{cmo.title}</span>
                                                 </div>
                                             </TableCell>
                                             <TableCell>

@@ -15,7 +15,7 @@ export default function LayoutWrapper({ children }: Props) {
   const isAdmin = session?.user?.isAdmin
 
   // Paths where NavHeader should NOT appear for anyone (e.g., Auth pages)
-  const alwaysHideNavOn = ["/register", "/error"]
+  const alwaysHideNavOn = ["/register", "/error", "/login"]
 
   // Logic: 
   // 1. Always hide on explicit paths

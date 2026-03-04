@@ -1,7 +1,7 @@
 "use client"
 
 import { ColumnDef } from "@tanstack/react-table"
-import { MoreHorizontal, Pencil, Trash2 } from "lucide-react"
+import { MoreHorizontal, Pencil, Trash2, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
     DropdownMenu,
@@ -11,6 +11,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import Link from "next/link"
 import { Cmo } from "@prisma/client"
 
 export type CmoColumnProps = {
@@ -26,6 +27,13 @@ export const getColumns = ({ onEdit, onDelete }: CmoColumnProps): ColumnDef<any>
     {
         accessorKey: "title",
         header: "Title",
+        cell: ({ row }) => {
+            return (
+                <div className="max-w-[500px] break-words whitespace-normal leading-normal">
+                    {row.getValue("title")}
+                </div>
+            )
+        }
     },
     {
         accessorKey: "series",
@@ -57,6 +65,12 @@ export const getColumns = ({ onEdit, onDelete }: CmoColumnProps): ColumnDef<any>
                         <DropdownMenuItem onClick={() => onEdit(cmo)}>
                             <Pencil className="mr-2 h-4 w-4" />
                             Edit CMO
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                            <Link href={`/admin/evaluation-checklist/builder?cmoId=${cmo.id}&programId=${cmo.programId}`}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Checklist
+                            </Link>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
