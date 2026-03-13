@@ -6,21 +6,8 @@ import {
     SidebarProvider,
 } from "@/components/ui/sidebar"
 import { AdminAuthGuard } from "@/components/admin-auth-guard"
-import { auth } from "@/lib/auth"
-import { headers } from "next/headers"
-import { redirect } from "next/navigation"
 
-export default async function Layout({ children }: { children: ReactNode }) {
-    // Defense-in-depth: middleware is the primary gate, but this server-side
-    // check ensures protection even if middleware is bypassed or misconfigured.
-    const session = await auth.api.getSession({
-        headers: await headers(),
-    });
-
-    if (!session || !session.user.isAdmin) {
-        redirect("/login");
-    }
-
+export default function Layout({ children }: { children: ReactNode }) {
     return (
         <SidebarProvider
             style={
