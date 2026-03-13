@@ -1,32 +1,43 @@
 import "dotenv/config";
-import type { PoolConfig } from 'mariadb';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import { PrismaClient } from '@prisma/client';
 
-const required = ['DATABASE_HOST', 'DATABASE_USER', 'DATABASE_PASSWORD', 'DATABASE_NAME', 'DATABASE_PORT'];
-for (const key of required) {
-  if (!process.env[key]) throw new Error(`Missing required env var: ${key}`);
-}
-
-const dbConfig: PoolConfig = {
-  host: process.env.DATABASE_HOST,
-  user: process.env.DATABASE_USER,
-  password: process.env.DATABASE_PASSWORD,
-  database: process.env.DATABASE_NAME,
-  port: parseInt(process.env.DATABASE_PORT as string, 10),
-  connectionLimit: process.env.DATABASE_POOL_SIZE ? parseInt(process.env.DATABASE_POOL_SIZE, 10) : 10,
-  // Remote Railway DB needs more time to acquire/establish connections
-  acquireTimeout: 30000,   // 30s to get a connection from pool
-  connectTimeout: 20000,   // 20s to establish a new TCP connection
-  idleTimeout: 60000,      // Keep idle connections alive for 60s
-  minimumIdle: 2,          // Always keep 2 connections warm
+type GlobalWithPrisma = {
+  prismaAdapter: PrismaMariaDb | undefined;
+  prisma: PrismaClient | undefined;
 };
 
-const adapter = new PrismaMariaDb(dbConfig);
+const globalForPrisma = globalThis as unknown as GlobalWithPrisma;
 
-const prisma = new PrismaClient({
+// Map env vars - using DATABASE_ prefix to match existing .env while adopting persistence pattern
+const host = process.env.DATABASE_HOST || process.env.DB_HOST;
+const user = process.env.DATABASE_USER || process.env.DB_USER;
+const password = process.env.DATABASE_PASSWORD || process.env.DB_PASSWORD;
+const database = process.env.DATABASE_NAME || process.env.DB_NAME;
+const port = parseInt((process.env.DATABASE_PORT || process.env.DB_PORT || "3306") as string, 10);
+
+// Persist the adapter globally so HMR doesn't create a new connection pool each reload
+const adapter =
+  globalForPrisma.prismaAdapter ??
+  new PrismaMariaDb({
+    host: host!,
+    user: user!,
+    password: password!,
+    database: database!,
+    port: port,
+    connectionLimit: process.env.DATABASE_POOL_SIZE ? parseInt(process.env.DATABASE_POOL_SIZE, 10) : 10,
+    acquireTimeout: 30000,
+    connectTimeout: 20000,
+  });
+
+const prisma = globalForPrisma.prisma ?? new PrismaClient({
   adapter,
-  log: ['error'],
+  log: ['error']
 });
+
+if (process.env.NODE_ENV !== "production") {
+  globalForPrisma.prismaAdapter = adapter;
+  globalForPrisma.prisma = prisma;
+}
 
 export { prisma };

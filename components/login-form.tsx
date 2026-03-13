@@ -46,17 +46,14 @@ export function LoginForm({
       }
 
       if (data) {
-        const { data: sessionData } = await authClient.getSession()
-
-        // Use type assertion and optional chaining for safety with dynamic fields
-        const user = sessionData?.user as any
+        // Use the user data returned directly from signIn for faster redirection
+        const user = data.user as any
 
         if (user?.isAdmin) {
           toast.success("Login successfully!")
           router.push("/admin/dashboard")
         } else {
           toast.error("Access denied. Admin privileges required.")
-          // Optional: handle non-admin login, maybe sign out
           await authClient.signOut()
         }
       }

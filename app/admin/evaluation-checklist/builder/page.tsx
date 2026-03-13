@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { toast } from "sonner"
 import { Plus, Pencil, Trash2, ArrowRight, LayoutList, FileText, CheckCircle2, ArrowUp, Loader2 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
@@ -83,8 +84,8 @@ export default function ChecklistManagementPage() {
                 ])
                 const progData = await progRes.json()
                 const cmoData = await cmoRes.json()
-                setPrograms(progData)
-                setCmos(cmoData)
+                setPrograms(Array.isArray(progData) ? progData : [])
+                setCmos(Array.isArray(cmoData) ? cmoData : [])
             } catch (error) {
                 console.error("Error fetching initial data:", error)
             }
@@ -92,7 +93,7 @@ export default function ChecklistManagementPage() {
         fetchData()
     }, [])
 
-    const filteredCmos = cmos.filter(c => c.programId === selectedProgram)
+    const filteredCmos = Array.isArray(cmos) ? cmos.filter(c => c.programId === selectedProgram) : []
 
     const fetchChecklist = async (cmoId: string) => {
         if (!cmoId) return
@@ -205,64 +206,63 @@ export default function ChecklistManagementPage() {
     }
 
     return (
-        <div className="p-4 md:p-8 space-y-8 max-w-7xl mx-auto">
+        <div className="flex flex-1 flex-col p-4 md:p-8 space-y-6">
             <div className="flex flex-col gap-2">
-                <h1 className="text-3xl font-extrabold tracking-tight">Checklist Template Builder</h1>
-                <p className="text-muted-foreground text-lg">
+                <h1 className="text-2xl font-bold tracking-tight">Checklist Template Builder</h1>
+                <p className="text-muted-foreground">
                     Define the evaluation structure for specific programs and CHED Memorandum Orders.
                 </p>
             </div>
 
-            <Card className="border-primary/20 bg-muted/30">
-                <CardHeader className="pb-4">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
-                        <LayoutList className="h-4 w-4 text-primary" />
-                        Step 1: Select Scope
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6">
-                    <div className="space-y-2">
-                        <Label htmlFor="program">Academic Program</Label>
-                        <Select value={selectedProgram} onValueChange={(val) => {
-                            setSelectedProgram(val)
-                            setSelectedCmo("")
-                            setSections([])
-                        }}>
-                            <SelectTrigger className="h-11">
-                                <SelectValue placeholder="Which program is this for?" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {programs.map(prog => (
-                                    <SelectItem key={prog.id} value={prog.id}>{prog.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="cmo">Associated CMO</Label>
-                        <Select
-                            disabled={!selectedProgram}
-                            value={selectedCmo}
-                            onValueChange={(val) => {
-                                setSelectedCmo(val)
-                                fetchChecklist(val)
-                            }}
-                        >
-                            <SelectTrigger className="h-11">
-                                <SelectValue placeholder={selectedProgram ? "Select the CMO" : "Select a program first"} />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {filteredCmos.map(cmo => (
-                                    <SelectItem key={cmo.id} value={cmo.id}>{cmo.number}</SelectItem>
-                                ))}
-                                {selectedProgram && filteredCmos.length === 0 && (
-                                    <div className="p-2 text-sm text-center text-muted-foreground">No CMOs linked to this program.</div>
-                                )}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </CardContent>
-            </Card>
+            <div className="flex flex-col md:flex-row items-end gap-4 py-4">
+                <div className="flex-1 space-y-2 w-full">
+                    <Label htmlFor="program" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Academic Program</Label>
+                    <Select value={selectedProgram} onValueChange={(val) => {
+                        setSelectedProgram(val)
+                        setSelectedCmo("")
+                        setSections([])
+                    }}>
+                        <SelectTrigger className="h-9 shadow-sm">
+                            <SelectValue placeholder="Select Program" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {programs.map(prog => (
+                                <SelectItem key={prog.id} value={prog.id}>{prog.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="flex-1 space-y-2 w-full">
+                    <Label htmlFor="cmo" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Associated CMO</Label>
+                    <Select
+                        disabled={!selectedProgram}
+                        value={selectedCmo}
+                        onValueChange={(val) => {
+                            setSelectedCmo(val)
+                            fetchChecklist(val)
+                        }}
+                    >
+                        <SelectTrigger className="h-9 shadow-sm">
+                            <SelectValue placeholder={selectedProgram ? "Select CMO" : "Select a program first"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {filteredCmos.map(cmo => (
+                                <SelectItem key={cmo.id} value={cmo.id}>{cmo.number}</SelectItem>
+                            ))}
+                            {selectedProgram && filteredCmos.length === 0 && (
+                                <div className="p-2 text-sm text-center text-muted-foreground">No CMOs linked to this program.</div>
+                            )}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Button asChild variant="outline" size="sm" className="h-9">
+                        <Link href="/admin/evaluation-checklist/list">
+                            <LayoutList className="mr-2 h-4 w-4" /> View All Templates
+                        </Link>
+                    </Button>
+                </div>
+            </div>
 
             {selectedCmo ? (
                 <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">

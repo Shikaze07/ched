@@ -70,7 +70,10 @@ export default function InstitutionPage() {
             </div>
 
             {isLoading ? (
-                <div className="flex h-24 items-center justify-center">Loading institutions...</div>
+                <div className="flex flex-col items-center justify-center py-20 gap-4">
+                    <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-muted-foreground font-medium">Loading institutions...</p>
+                </div>
             ) : (
                 <DataTable
                     ref={tableRef}
