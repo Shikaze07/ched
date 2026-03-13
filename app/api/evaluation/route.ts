@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
           },
         },
       });
-    }, 8000);
+    }, 25000);
 
     return NextResponse.json(
       { success: true, record: result },
@@ -129,7 +129,7 @@ export async function GET(request: NextRequest) {
           prisma.evaluationRecord.findUnique({
             where: { refNo },
           }),
-        5000
+        25000
       );
 
       if (!record) {
@@ -145,7 +145,7 @@ export async function GET(request: NextRequest) {
     // Get all records
     const records = await executeQuery(
       () => prisma.evaluationRecord.findMany(),
-      5000
+      25000
     );
     return NextResponse.json(records);
   } catch (error) {

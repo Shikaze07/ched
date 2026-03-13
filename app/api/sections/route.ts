@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
                     },
                 });
             }
-        }, 8000);
+        }, 25000);
 
         return NextResponse.json(result);
     } catch (error) {
@@ -53,7 +53,7 @@ export async function DELETE(request: NextRequest) {
             () => prisma.section.delete({
                 where: { id },
             }),
-            5000
+            25000
         );
 
         return NextResponse.json({ success: true });

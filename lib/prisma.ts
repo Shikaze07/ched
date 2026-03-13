@@ -25,7 +25,7 @@ const adapter =
     password: password!,
     database: database!,
     port: port,
-    connectionLimit: process.env.DATABASE_POOL_SIZE ? parseInt(process.env.DATABASE_POOL_SIZE, 10) : 10,
+    connectionLimit: 20,
     acquireTimeout: 30000,
     connectTimeout: 20000,
   });

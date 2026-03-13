@@ -48,24 +48,7 @@ export default function TemplateListPage() {
                 const progData = await progRes.json()
                 const cmoData = await cmoRes.json()
                 setPrograms(Array.isArray(progData) ? progData : [])
-
-                const safeCmoData = Array.isArray(cmoData) ? cmoData : []
-
-                // Fetch template status for each CMO
-                const cmosWithStatus = await Promise.all(safeCmoData.map(async (cmo: CMO) => {
-                    const res = await fetch(`/api/cmo/${cmo.id}/checklist`)
-                    const sections = await res.json()
-                    const reqCount = sections.reduce((acc: number, s: any) => acc + (s.requirements?.length || 0), 0)
-                    return {
-                        ...cmo,
-                        _count: {
-                            sections: sections.length,
-                            requirements: reqCount
-                        }
-                    }
-                }))
-
-                setCmos(cmosWithStatus)
+                setCmos(Array.isArray(cmoData) ? cmoData : [])
             } catch (error) {
                 console.error("Error fetching data:", error)
                 toast.error("Failed to load templates list")

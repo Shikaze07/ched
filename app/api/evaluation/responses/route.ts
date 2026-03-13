@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
         prisma.evaluationRecord.findUnique({
           where: { refNo },
         }),
-      5000
+      25000
     );
 
     if (!evaluationRecord) {
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
           responses,
           evaluationRecord.id
         );
-      }, 8000);
+      }, 25000);
     }
 
     // Publish update to Pusher if requested
@@ -125,7 +125,7 @@ export async function GET(request: NextRequest) {
         prisma.evaluationRecord.findUnique({
           where: { refNo },
         }),
-      5000
+      25000
     );
 
     if (!evaluationRecord) {
@@ -143,7 +143,7 @@ export async function GET(request: NextRequest) {
             evaluationId: evaluationRecord.id,
           },
         }),
-      5000
+      25000
     );
 
     // Convert to the format expected by the frontend

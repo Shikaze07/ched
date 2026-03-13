@@ -10,7 +10,7 @@ export async function GET() {
                     name: 'asc'
                 }
             }),
-            5000
+            25000
         );
         return NextResponse.json(programs);
     } catch (error) {
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
                     data: { code, name }
                 });
             }
-        }, 8000);
+        }, 25000);
 
         return NextResponse.json({ success: true, program: result });
     } catch (error) {

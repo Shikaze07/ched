@@ -8,12 +8,18 @@ export async function GET() {
             () => prisma.cmo.findMany({
                 include: {
                     program: true,
+                    _count: {
+                        select: {
+                            sections: true,
+                            requirements: true,
+                        }
+                    }
                 },
                 orderBy: {
                     series: 'desc'
                 }
             }),
-            5000
+            25000
         );
         return NextResponse.json(cmos);
     } catch (error) {
@@ -54,7 +60,7 @@ export async function POST(request: NextRequest) {
                     },
                 });
             }
-        }, 8000);
+        }, 25000);
 
         return NextResponse.json({ success: true, cmo: result }, { status: id ? 200 : 201 });
     } catch (error) {
@@ -76,7 +82,7 @@ export async function DELETE(request: NextRequest) {
             () => prisma.cmo.delete({
                 where: { id },
             }),
-            5000
+            25000
         );
 
         return NextResponse.json({ success: true });

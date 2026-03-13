@@ -51,7 +51,7 @@ export function LoginForm({
 
         if (user?.isAdmin) {
           toast.success("Login successfully!")
-          router.push("/admin/dashboard")
+          window.location.href = "/admin/dashboard"
         } else {
           toast.error("Access denied. Admin privileges required.")
           await authClient.signOut()

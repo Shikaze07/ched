@@ -6,7 +6,7 @@ export async function GET() {
     try {
         const institutions = await executeQuery(
             () => prisma.institution.findMany({ orderBy: { name: "asc" } }),
-            5000
+            25000
         );
         return NextResponse.json(institutions);
     } catch (error) {
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
             } else {
                 return await prisma.institution.create({ data: { name } });
             }
-        }, 8000);
+        }, 25000);
 
         return NextResponse.json({ success: true, institution: result }, { status: id ? 200 : 201 });
     } catch (error) {
@@ -48,7 +48,7 @@ export async function DELETE(request: NextRequest) {
             return NextResponse.json({ error: "Missing institution ID" }, { status: 400 });
         }
 
-        await executeQuery(() => prisma.institution.delete({ where: { id } }), 5000);
+        await executeQuery(() => prisma.institution.delete({ where: { id } }), 25000);
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error("Error deleting institution:", error);
