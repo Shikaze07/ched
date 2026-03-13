@@ -45,7 +45,7 @@ interface Section {
 
 import { useSearchParams } from "next/navigation"
 
-export default function ChecklistManagementPage() {
+function ChecklistBuilderContent() {
     const searchParams = useSearchParams()
     const urlCmoId = searchParams.get("cmoId")
     const urlProgramId = searchParams.get("programId")
@@ -503,5 +503,18 @@ export default function ChecklistManagementPage() {
                 </DialogContent>
             </Dialog>
         </div>
+    )
+}
+
+export default function ChecklistManagementPage() {
+    return (
+        <React.Suspense fallback={
+            <div className="flex flex-1 flex-col items-center justify-center py-20 gap-4">
+                <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                <p className="text-muted-foreground font-medium">Loading Builder...</p>
+            </div>
+        }>
+            <ChecklistBuilderContent />
+        </React.Suspense>
     )
 }
