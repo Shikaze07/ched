@@ -22,7 +22,7 @@ export function AdminAuthGuard() {
     // Redirect if session is gone (handles multi-tab logout)
     useEffect(() => {
         if (!isPending && !session) {
-            router.replace("/login")
+            router.replace("/program-assessment")
         }
     }, [session, isPending, router])
 

@@ -69,6 +69,16 @@ const data = {
       title: "Evaluations",
       url: "/admin/evaluation",
       icon: IconChecklist,
+      items: [
+        {
+          title: "Evaluations",
+          url: "/admin/evaluation",
+        },
+        {
+          title: "Archived Evaluations",
+          url: "/admin/evaluation/archived",
+        },
+      ],
     },
     {
       title: "Evaluation Checklist",
@@ -80,10 +90,10 @@ const data = {
           title: "Template List",
           url: "/admin/evaluation-checklist/list",
         },
-        {
-          title: "Template Builder",
-          url: "/admin/evaluation-checklist/builder",
-        },
+        // {
+        //   title: "Template Builder",
+        //   url: "/admin/evaluation-checklist/builder",
+        // },
       ],
     },
 

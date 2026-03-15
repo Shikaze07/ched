@@ -79,13 +79,66 @@ export async function DELETE(request: NextRequest) {
         }
 
         await executeQuery(
-            () => prisma.cmo.delete({
-                where: { id },
-            }),
+            async () => {
+                // Get CMO details
+                const cmo = await prisma.cmo.findUnique({
+                    where: { id },
+                });
+
+                if (!cmo) {
+                    throw new Error("CMO not found");
+                }
+
+                // Find all evaluation records that reference this CMO
+                const evaluations = await prisma.evaluationRecord.findMany({
+                    where: {
+                        selectedCMOs: {
+                            string_contains: `"${id}"`,
+                        }
+                    },
+                    include: {
+                        responses: true,
+                    }
+                });
+
+                // Archive evaluations before deleting
+                for (const evaluation of evaluations) {
+                    await prisma.archivedEvaluationRecord.create({
+                        data: {
+                            originalId: evaluation.id,
+                            personnelName: evaluation.personnelName,
+                            position: evaluation.position,
+                            email: evaluation.email,
+                            institution: evaluation.institution,
+                            academicYear: evaluation.academicYear,
+                            selectedCMOs: evaluation.selectedCMOs as any,
+                            selectedPrograms: evaluation.selectedPrograms as any,
+                            refNo: evaluation.refNo,
+                            orNumber: evaluation.orNumber,
+                            dateOfEvaluation: evaluation.dateOfEvaluation,
+                            timestamp: evaluation.timestamp,
+                            archivedCmoId: cmo.id,
+                            archivedCmoNumber: cmo.number,
+                            archivedCmoTitle: cmo.title,
+                            responses: evaluation.responses as any,
+                        },
+                    });
+                }
+
+                // Delete the CMO (cascade will handle sections, requirements, responses)
+                await prisma.cmo.delete({
+                    where: { id },
+                });
+
+                return { archivedCount: evaluations.length };
+            },
             25000
         );
 
-        return NextResponse.json({ success: true });
+        return NextResponse.json({ 
+            success: true,
+            message: "Template deleted. Any related evaluations are archived."
+        });
     } catch (error) {
         console.error("Error deleting CMO:", error);
         return NextResponse.json({ error: "Failed to delete CMO" }, { status: 500 });

@@ -24,6 +24,20 @@ export const columns: ColumnDef<EvaluationWithInstitution>[] = [
         header: "Institution",
     },
     {
+        accessorKey: "cmo",
+        header: "CMO",
+        cell: ({ row }) => {
+            return <div className="max-w-xs truncate">{row.getValue("cmo")}</div>
+        },
+    },
+    {
+        accessorKey: "program",
+        header: "Program",
+        cell: ({ row }) => {
+            return <div className="max-w-xs truncate">{row.getValue("program")}</div>
+        },
+    },
+    {
         accessorKey: "personnelName",
         header: "Personnel Name",
     },

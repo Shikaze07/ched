@@ -132,3 +132,25 @@ model EvaluationRecord {
   timestamp        DateTime @default(now())
   responses        EvaluationResponse[]
 }
+
+model ArchivedEvaluationRecord {
+  id                String   @id @default(cuid()) @db.VarChar(25)
+  originalId        String   @unique
+  personnelName     String
+  position          String
+  email             String
+  institution       String
+  academicYear      String
+  selectedCMOs      Json
+  selectedPrograms  Json
+  refNo             String
+  orNumber          String
+  dateOfEvaluation  DateTime
+  timestamp         DateTime @default(now())
+  archivedAt        DateTime @default(now())
+  archivedReason    String   @default("Template deleted")
+  archivedCmoId     String   @db.VarChar(25)
+  archivedCmoNumber String
+  archivedCmoTitle  String
+  responses         Json
+}

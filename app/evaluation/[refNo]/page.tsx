@@ -90,31 +90,38 @@ const RequirementRow = React.memo(({
   onComplianceChange,
   isLoggedIn
 }: RequirementRowProps) => {
+  const [isDescOpen, setIsDescOpen] = useState(false);
+
   return (
     <tr className="border-b hover:bg-gray-50">
       {/* Description */}
       <td className="p-2 border align-top max-w-0 w-[12.5%]">
         <div className="mb-2">
-          <Badge variant="outline" className="text-[9px] py-0 px-1 bg-blue-50 text-blue-700 border-blue-200 uppercase font-semibold">
-            {requirement.cmo_number.split(',')[0]}
-          </Badge>
+         
         </div>
-        <div
-          dangerouslySetInnerHTML={{
-            __html: requirement.description,
-          }}
-          className="text-xs leading-relaxed break-words"
-        />
-      </td>
 
-      {/* Required Evidence */}
-      <td className="p-2 border align-top max-w-0 w-[12.5%]">
-        <div
-          dangerouslySetInnerHTML={{
-            __html: requirement.required_evidence,
-          }}
-          className="text-xs break-words"
-        />
+        <div className="flex items-start gap-2">
+          <div className="flex-1 text-xs leading-relaxed break-words max-h-24 overflow-hidden">
+            <div dangerouslySetInnerHTML={{ __html: requirement.description }} />
+          </div>
+          <div className="shrink-0">
+          
+          </div>
+        </div>
+
+        <Dialog open={isDescOpen} onOpenChange={setIsDescOpen}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle className="text-blue-700">Requirement Description</DialogTitle>
+            </DialogHeader>
+            <div className="py-2 text-sm">
+              <div dangerouslySetInnerHTML={{ __html: requirement.description }} />
+            </div>
+            <DialogFooter>
+              <Button onClick={() => setIsDescOpen(false)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </td>
 
       {/* Actual Situation */}
@@ -327,6 +334,7 @@ const EvaluationPage = () => {
   const [tempInfoData, setTempInfoData] = useState<EvaluationData | null>(null);
   const [isLoadingInfo, setIsLoadingInfo] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingSections, setIsLoadingSections] = useState(false);
 
   const { data: session } = authClient.useSession();
   const isLoggedIn = !!session;
@@ -412,6 +420,7 @@ const EvaluationPage = () => {
 
     // Fetch real CMO data and checklists
     try {
+      setIsLoadingSections(true);
       const organized = await Promise.all(data.selectedCMOs.map(async (cmoId) => {
         // Fetch checklist items (sections and requirements)
         const checklistRes = await fetch(`/api/cmo/${cmoId}/checklist`);
@@ -423,8 +432,9 @@ const EvaluationPage = () => {
         return {
           cmo: {
             id: cmoId,
-            cmo_number: cmoMetadata?.number || "Unknown CMO",
-            title: cmoMetadata?.title || ""
+            cmo_number: cmoMetadata ? `CHED MEMORANDUM ORDER No. ${cmoMetadata.number}${cmoMetadata.series ? `, Series ${cmoMetadata.series}` : ""}` : "Unknown CMO",
+            title: cmoMetadata?.title || "",
+            series: cmoMetadata?.series || null,
           },
           sections: sections.map((s: any) => ({
             id: s.id,
@@ -472,6 +482,8 @@ const EvaluationPage = () => {
     } catch (error) {
       console.error("Error setting up evaluation data:", error);
       toast.error("Failed to load checklist templates from database.");
+    } finally {
+      setIsLoadingSections(false);
     }
 
     // Load existing responses from database
@@ -794,6 +806,18 @@ const EvaluationPage = () => {
     return <div className="p-8">Loading...</div>;
   }
 
+  // Map program display using metadata if possible
+  const displayedProgram = (() => {
+    if (!evaluationData) return "Not Specified";
+    const p = (evaluationData as any).program;
+    if (!p) return "Not Specified";
+    const byId = allPrograms.find((ap) => ap.id === p);
+    if (byId) return byId.name;
+    if (typeof p === "string") return p;
+    if (typeof p === "object") return p.name || p.label || JSON.stringify(p);
+    return String(p);
+  })();
+
   return (
     <TooltipProvider>
       <div className="p-8">
@@ -867,7 +891,7 @@ const EvaluationPage = () => {
               <div className="pt-2 border-t mt-2 flex flex-wrap items-center gap-4">
                 <div>
                   <span className="text-gray-600 font-semibold block uppercase text-[10px] mb-1">Evaluating Program:</span>
-                  <p className="text-xs font-semibold text-blue-900">{evaluationData.program || "Not Specified"}</p>
+                  <p className="text-xs font-semibold text-blue-900">{displayedProgram}</p>
                 </div>
                 <div className="flex-1">
                   <span className="text-gray-600 font-semibold block uppercase text-[10px] mb-1">Evaluating CMOs:</span>
@@ -891,7 +915,10 @@ const EvaluationPage = () => {
           </CardHeader>
 
           <CardContent className="space-y-8 p-4 md:p-6">
-            {mergedSections.map((section, sectionIndex) => (
+            {isLoadingSections ? (
+              <div className="py-8 text-center text-sm text-gray-600">Loading sections…</div>
+            ) : (
+              mergedSections.map((section, sectionIndex) => (
               <div key={sectionIndex} className="space-y-4">
                 <h3 className="text-lg font-bold text-blue-800 border-b-2 border-blue-100 pb-1 mt-6">
                   {sectionIndex + 1}. {section.title}
@@ -928,7 +955,7 @@ const EvaluationPage = () => {
                   </table>
                 </div>
               </div>
-            ))}
+            ))) }
 
             <div className="flex flex-col sm:justify-end gap-4 pt-6 border-t">
               <Button
