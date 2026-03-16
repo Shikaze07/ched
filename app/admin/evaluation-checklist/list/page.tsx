@@ -201,9 +201,9 @@ export default function TemplateListPage() {
                             </SelectContent>
                         </Select>
                     </div>
-                    <Button size="sm" onClick={() => setIsCreateModalOpen(true)}>
+                    {/* <Button size="sm" onClick={() => setIsCreateModalOpen(true)}>
                         <Plus className="mr-2 h-4 w-4" /> Create Template
-                    </Button>
+                    </Button> */}
                 </div>
             </div>
 
