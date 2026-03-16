@@ -56,7 +56,21 @@ export default function ReportsPage() {
                 const instData = await instRes.json()
                 const cmoData = await cmoRes.json()
 
-                setEvaluations(Array.isArray(evalData) ? evalData : [])
+                const instMap: Record<string, string> = Array.isArray(instData)
+                    ? instData.reduce((m: Record<string, string>, i: any) => {
+                          m[i.id] = i.name
+                          return m
+                      }, {})
+                    : {}
+
+                const mappedEvals = Array.isArray(evalData)
+                    ? evalData.map((e: any) => ({
+                          ...e,
+                          institution: instMap[e.institution] || e.institution,
+                      }))
+                    : []
+
+                setEvaluations(mappedEvals)
                 setInstitutions(Array.isArray(instData) ? instData : [])
                 setCmos(Array.isArray(cmoData) ? cmoData : [])
             } catch (error) {
@@ -81,9 +95,13 @@ export default function ReportsPage() {
         let cmoMatch = true
         if (filters.cmo) {
             const selectedCmos = Array.isArray(evaluation.selectedCMOs) ? evaluation.selectedCMOs : []
+            const cmoSearchLower = filters.cmo.toLowerCase()
             cmoMatch = selectedCmos.some((item: any) => {
                 const id = typeof item === "string" ? item : item?.id || item?.value
-                return id === filters.cmo
+                const cmo = cmos.find(c => c.id === id)
+                if (!cmo) return false
+                return cmo.number.toLowerCase().includes(cmoSearchLower) ||
+                       cmo.title.toLowerCase().includes(cmoSearchLower)
             })
         }
 
@@ -229,24 +247,15 @@ export default function ReportsPage() {
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="cmo-filter">CMO</Label>
-                            <Select
+                            <Input
+                                id="cmo-filter"
+                                placeholder="Search by CMO number or title..."
                                 value={filters.cmo}
-                                onValueChange={(value) =>
-                                    setFilters({ ...filters, cmo: value })
+                                onChange={(e) =>
+                                    setFilters({ ...filters, cmo: e.target.value })
                                 }
-                            >
-                                <SelectTrigger id="cmo-filter" className="h-9">
-                                    <SelectValue placeholder="Select CMO..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {cmos.map((cmo) => (
-                                        <SelectItem key={cmo.id} value={cmo.id}>
-                                            {cmo.number} - {cmo.title.substring(0, 40)}
-                                            {cmo.title.length > 40 ? "..." : ""}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                                className="h-9"
+                            />
                         </div>
                     </div>
                 </CardContent>

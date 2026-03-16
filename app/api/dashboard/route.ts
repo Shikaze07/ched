@@ -65,17 +65,24 @@ export async function GET() {
             .filter(item => item.count > 0)
             .sort((a, b) => b.count - a.count);
 
-        // Calculate evaluations by institution
+        // Calculate evaluations by institution (resolve institution id -> name)
+        const institutions = await prisma.institution.findMany();
+        const institutionMap: Record<string, string> = {};
+        institutions.forEach(inst => {
+            institutionMap[inst.id] = inst.name;
+        });
+
         const evaluationsByInstitution: Record<string, number> = {};
         evaluations.forEach(evaluation => {
-            if (!evaluationsByInstitution[evaluation.institution]) {
-                evaluationsByInstitution[evaluation.institution] = 0;
+            const instKey = evaluation.institution || "";
+            if (!evaluationsByInstitution[instKey]) {
+                evaluationsByInstitution[instKey] = 0;
             }
-            evaluationsByInstitution[evaluation.institution]++;
+            evaluationsByInstitution[instKey]++;
         });
 
         const evaluationsByInstitutionArray = Object.entries(evaluationsByInstitution)
-            .map(([name, count]) => ({ name, count }))
+            .map(([id, count]) => ({ name: institutionMap[id] || id, count }))
             .sort((a, b) => b.count - a.count);
 
         // Calculate evaluations by academic year
@@ -91,12 +98,12 @@ export async function GET() {
             .map(([year, count]) => ({ year, count }))
             .sort((a, b) => a.year.localeCompare(b.year));
 
-        // Get recent evaluations
+        // Get recent evaluations (resolve institution id -> name)
         const recentEvaluations = evaluations.slice(0, 10).map(evaluation => ({
             id: evaluation.id,
             refNo: evaluation.refNo,
             personnelName: evaluation.personnelName,
-            institution: evaluation.institution,
+            institution: institutionMap[evaluation.institution] || evaluation.institution,
             academicYear: evaluation.academicYear,
             dateOfEvaluation: evaluation.dateOfEvaluation.toISOString(),
         }));
