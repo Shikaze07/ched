@@ -6,9 +6,10 @@ import { prisma } from "./prisma"
 
 export const auth = betterAuth({
     database: prismaAdapter(prisma, {
-
         provider: "mysql",
     }),
+    baseURL: process.env.BETTER_AUTH_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined),
+    secret: process.env.BETTER_AUTH_SECRET,
     emailAndPassword: {
         enabled: true,
         requireEmailVerification: false

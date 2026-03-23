@@ -337,7 +337,7 @@ export function AssessmentForm({
                                         </>
                                     )}
                                 </Button>
-                                <Button style={{ backgroundColor: "#ffc518" }}>Print</Button>
+
                             </div>
 
                             {/* Search Results Dropdown */}

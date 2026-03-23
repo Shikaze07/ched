@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
       refNo,
       orNumber,
       dateOfEvaluation,
+      address,
       responses, // Array of { requirementId, actualSituation, googleLink, heiCompliance, chedCompliance, linkAccessible, chedRemarks }
     } = body;
 
@@ -61,6 +62,7 @@ export async function POST(request: NextRequest) {
             email,
             institution,
             academicYear,
+            address,
             selectedCMOs: selectedCMOs || [],
             selectedPrograms: selectedPrograms || [],
             orNumber: orNumber || "",
@@ -83,6 +85,7 @@ export async function POST(request: NextRequest) {
           email,
           institution,
           academicYear,
+          address,
           selectedCMOs: selectedCMOs || [],
           selectedPrograms: selectedPrograms || [],
           refNo,

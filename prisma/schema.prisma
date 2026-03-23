@@ -79,8 +79,9 @@ model Program {
 }
 
 model Institution {
-  id   String @id @default(cuid()) @db.VarChar(25)
-  name String
+  id      String @id @default(cuid()) @db.VarChar(25)
+  name    String
+  address String?
 }
 
 model Section {
@@ -124,6 +125,7 @@ model EvaluationRecord {
   email            String
   institution      String
   academicYear     String
+  address          String?
   selectedCMOs     Json
   selectedPrograms Json
   refNo            String   @unique
@@ -141,6 +143,7 @@ model ArchivedEvaluationRecord {
   email             String
   institution       String
   academicYear      String
+  address           String?
   selectedCMOs      Json
   selectedPrograms  Json
   refNo             String

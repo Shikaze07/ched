@@ -18,7 +18,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { id, name } = body;
+        const { id, name, address } = body;
 
         if (!name) {
             return NextResponse.json({ error: "Name is required" }, { status: 400 });
@@ -26,9 +26,9 @@ export async function POST(request: NextRequest) {
 
         const result = await executeQuery(async () => {
             if (id) {
-                return await prisma.institution.update({ where: { id }, data: { name } });
+                return await prisma.institution.update({ where: { id }, data: { name, address } });
             } else {
-                return await prisma.institution.create({ data: { name } });
+                return await prisma.institution.create({ data: { name, address } });
             }
         }, 25000);
 

@@ -24,6 +24,10 @@ export const getColumns = ({ onEdit, onDelete }: InstitutionColumnProps): Column
         header: "Institution Name",
     },
     {
+        accessorKey: "address",
+        header: "Address",
+    },
+    {
         id: "actions",
         cell: ({ row }) => {
             const institution = row.original

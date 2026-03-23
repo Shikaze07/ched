@@ -16,7 +16,7 @@ export default function NavHeader() {
 
     return (
         <header
-            className="sticky top-0 z-50 border-b"
+            className="sticky top-0 z-50 border-b print:hidden"
             style={{ backgroundColor: "#2980b9" }}
         >
             <div className="flex h-14 items-center justify-between px-4 w-full">

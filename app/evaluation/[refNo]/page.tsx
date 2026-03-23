@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,7 +30,7 @@ interface EvaluationResponse {
   link_accessible: "Yes" | "No" | "";
   ched_remarks: string;
 }
-import { Copy, Plus, ArrowLeft, Save, Info, Pencil, CheckCircle, AlertTriangle } from "lucide-react";
+import { Copy, Plus, ArrowLeft, Save, Info, Pencil, CheckCircle, AlertTriangle, Printer } from "lucide-react";
 import { evaluationStore, EvaluationRecord } from "@/lib/evaluation-store";
 import RichTextEditor from "../../../components/rich-text-editor";
 import { cn } from "@/lib/utils";
@@ -59,7 +59,20 @@ interface EvaluationData {
   refNo: string;
 }
 
-// Utility to strip HTML tags efficiently
+const toRoman = (num: number): string => {
+  const map: { [key: string]: number } = {
+    M: 1000, CM: 900, D: 500, CD: 400, C: 100, XC: 90, L: 50, XL: 40, X: 10, IX: 9, V: 5, IV: 4, I: 1
+  };
+  let result = '';
+  for (let key in map) {
+    while (num >= map[key]) {
+      result += key;
+      num -= map[key];
+    }
+  }
+  return result;
+};
+
 const stripHtml = (html: string) => {
   if (!html) return "";
   return html.replace(/<[^>]*>?/gm, '');
@@ -96,19 +109,11 @@ const RequirementRow = React.memo(({
     <tr className="border-b hover:bg-gray-50">
       {/* Description */}
       <td className="p-2 border align-top max-w-0 w-[12.5%]">
-        <div className="mb-2">
-         
-        </div>
-
         <div className="flex items-start gap-2">
           <div className="flex-1 text-xs leading-relaxed break-words max-h-24 overflow-hidden">
             <div dangerouslySetInnerHTML={{ __html: requirement.description }} />
           </div>
-          <div className="shrink-0">
-          
-          </div>
         </div>
-
         <Dialog open={isDescOpen} onOpenChange={setIsDescOpen}>
           <DialogContent className="max-w-3xl">
             <DialogHeader>
@@ -124,13 +129,20 @@ const RequirementRow = React.memo(({
         </Dialog>
       </td>
 
+      {/* Required Evidence */}
+      <td className="p-2 border align-top max-w-0 w-[12.5%]">
+        <div className="text-xs leading-relaxed break-words max-h-24 overflow-hidden">
+          {requirement.required_evidence || "N/A"}
+        </div>
+      </td>
+
       {/* Actual Situation */}
       <td className="p-2 border align-top max-w-0 w-[12.5%]">
         <div className="relative group min-h-[40px]">
           <Button
             size="sm"
             variant="outline"
-            className="absolute top-0 right-0 h-6 w-6 p-0 bg-white shadow-sm border-blue-200"
+            className="absolute top-0 right-0 h-6 w-6 p-0 bg-white shadow-sm border-blue-200 print:hidden"
             onClick={() => onEditClick(requirement.id, "actual_situation")}
           >
             {response?.actual_situation ? (
@@ -145,9 +157,7 @@ const RequirementRow = React.memo(({
               dangerouslySetInnerHTML={{ __html: response.actual_situation }}
             />
           ) : (
-            <p className="text-[10px] text-gray-400 italic pr-8">
-              Click button to add
-            </p>
+            <p className="text-[10px] text-gray-400 italic pr-8">Click button to add</p>
           )}
         </div>
       </td>
@@ -158,7 +168,7 @@ const RequirementRow = React.memo(({
           <Button
             size="sm"
             variant="outline"
-            className="absolute top-0 right-0 h-6 w-6 p-0 bg-white shadow-sm border-blue-200"
+            className="absolute top-0 right-0 h-6 w-6 p-0 bg-white shadow-sm border-blue-200 print:hidden"
             onClick={() => onEditClick(requirement.id, "google_link")}
           >
             {response?.google_link ? (
@@ -179,9 +189,7 @@ const RequirementRow = React.memo(({
               </a>
             </div>
           ) : (
-            <p className="text-[10px] text-gray-400 italic pr-8">
-              Click button to add
-            </p>
+            <p className="text-[10px] text-gray-400 italic pr-8">Click button to add</p>
           )}
         </div>
       </td>
@@ -226,9 +234,7 @@ const RequirementRow = React.memo(({
             </div>
           </TooltipTrigger>
           {!isLoggedIn && (
-            <TooltipContent>
-              <p>Log in to edit compliance</p>
-            </TooltipContent>
+            <TooltipContent><p>Log in to edit compliance</p></TooltipContent>
           )}
         </Tooltip>
       </td>
@@ -257,9 +263,7 @@ const RequirementRow = React.memo(({
             </div>
           </TooltipTrigger>
           {!isLoggedIn && (
-            <TooltipContent>
-              <p>Log in to edit accessibility</p>
-            </TooltipContent>
+            <TooltipContent><p>Log in to edit accessibility</p></TooltipContent>
           )}
         </Tooltip>
       </td>
@@ -276,7 +280,7 @@ const RequirementRow = React.memo(({
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="absolute top-0 right-0 h-6 w-6 p-0 border border-transparent hover:border-blue-100 hover:bg-blue-50"
+                  className="absolute top-0 right-0 h-6 w-6 p-0 border border-transparent hover:border-blue-100 hover:bg-blue-50 print:hidden"
                   onClick={(e) => {
                     e.stopPropagation();
                     onEditClick(requirement.id, "ched_remarks");
@@ -302,9 +306,7 @@ const RequirementRow = React.memo(({
             </div>
           </TooltipTrigger>
           {!isLoggedIn && (
-            <TooltipContent>
-              <p>Log in to add remarks</p>
-            </TooltipContent>
+            <TooltipContent><p>Log in to add remarks</p></TooltipContent>
           )}
         </Tooltip>
       </td>
@@ -333,7 +335,6 @@ const EvaluationPage = () => {
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
   const [tempInfoData, setTempInfoData] = useState<EvaluationData | null>(null);
   const [isLoadingInfo, setIsLoadingInfo] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingSections, setIsLoadingSections] = useState(false);
 
   const { data: session } = authClient.useSession();
@@ -343,7 +344,6 @@ const EvaluationPage = () => {
   const [allPrograms, setAllPrograms] = useState<any[]>([]);
   const [allInstitutions, setAllInstitutions] = useState<any[]>([]);
 
-  // Fetch all metadata once
   useEffect(() => {
     const fetchMetadata = async () => {
       try {
@@ -362,40 +362,29 @@ const EvaluationPage = () => {
     fetchMetadata();
   }, []);
 
-  // Sync Program when CMO changes
   useEffect(() => {
     if (isInfoModalOpen && tempInfoData && tempInfoData.selectedCMOs.length > 0 && allCmos.length > 0) {
       const selectedCmoId = tempInfoData.selectedCMOs[0];
       const cmoMetadata = allCmos.find(c => c.id === selectedCmoId);
-
       if (cmoMetadata?.programId) {
         const program = allPrograms.find(p => p.id === cmoMetadata.programId);
         if (program && tempInfoData.program !== program.name) {
-          setTempInfoData(prev => prev ? {
-            ...prev,
-            program: program.name
-          } : null);
+          setTempInfoData(prev => prev ? { ...prev, program: program.name } : null);
         }
       }
     }
   }, [tempInfoData?.selectedCMOs, isInfoModalOpen, allCmos, allPrograms]);
 
-  // Sync CMO when Program changes
   useEffect(() => {
     if (isInfoModalOpen && tempInfoData && tempInfoData.program && allPrograms.length > 0) {
       const program = allPrograms.find(p => p.name === tempInfoData.program);
       const cmoMetadata = allCmos.find(c => c.programId === program?.id);
-
       if (cmoMetadata && !tempInfoData.selectedCMOs.includes(cmoMetadata.id)) {
-        setTempInfoData(prev => prev ? {
-          ...prev,
-          selectedCMOs: [cmoMetadata.id]
-        } : null);
+        setTempInfoData(prev => prev ? { ...prev, selectedCMOs: [cmoMetadata.id] } : null);
       }
     }
   }, [tempInfoData?.program, isInfoModalOpen, allCmos, allPrograms]);
 
-  // Notification states
   const [showNotifyDialog, setShowNotifyDialog] = useState(false);
   const [notifyTitle, setNotifyTitle] = useState("");
   const [notifyMessage, setNotifyMessage] = useState("");
@@ -417,18 +406,12 @@ const EvaluationPage = () => {
 
   const setupEvaluation = React.useCallback(async (data: EvaluationData) => {
     setEvaluationData(data);
-
-    // Fetch real CMO data and checklists
     try {
       setIsLoadingSections(true);
       const organized = await Promise.all(data.selectedCMOs.map(async (cmoId) => {
-        // Fetch checklist items (sections and requirements)
         const checklistRes = await fetch(`/api/cmo/${cmoId}/checklist`);
         const sections = await checklistRes.json();
-
-        // Use the metadata we already fetched at the component level
         const cmoMetadata = allCmos.find((c: any) => c.id === cmoId);
-
         return {
           cmo: {
             id: cmoId,
@@ -453,31 +436,20 @@ const EvaluationPage = () => {
 
       setOrganizedData(organized);
 
-      // Merge sections from all CMOs
       const sectionGroups: Record<string, any> = {};
       organized.forEach((cmoData) => {
         cmoData.sections.forEach((section: any) => {
           const title = section.section_title;
           if (!sectionGroups[title]) {
-            sectionGroups[title] = {
-              title: title,
-              requirements: [],
-              sort_order: section.sort_order,
-            };
+            sectionGroups[title] = { title, requirements: [], sort_order: section.sort_order };
           }
           section.requirements.forEach((req: any) => {
-            sectionGroups[title].requirements.push({
-              ...req,
-              cmo_id: cmoData.cmo.id,
-              cmo_number: cmoData.cmo.cmo_number,
-            });
+            sectionGroups[title].requirements.push({ ...req, cmo_id: cmoData.cmo.id, cmo_number: cmoData.cmo.cmo_number });
           });
         });
       });
 
-      const merged = Object.values(sectionGroups).sort(
-        (a, b) => a.sort_order - b.sort_order
-      );
+      const merged = Object.values(sectionGroups).sort((a, b) => a.sort_order - b.sort_order);
       setMergedSections(merged);
     } catch (error) {
       console.error("Error setting up evaluation data:", error);
@@ -486,11 +458,8 @@ const EvaluationPage = () => {
       setIsLoadingSections(false);
     }
 
-    // Load existing responses from database
     try {
-      const response = await fetch(
-        `/api/evaluation/responses?refNo=${encodeURIComponent(data.refNo)}`
-      );
+      const response = await fetch(`/api/evaluation/responses?refNo=${encodeURIComponent(data.refNo)}`);
       if (response.ok) {
         const dbResponses = await response.json();
         setResponses(dbResponses);
@@ -508,10 +477,8 @@ const EvaluationPage = () => {
       }
     }
 
-    // Subscribe to real-time updates via Pusher
     const channel = pusher.subscribe(`evaluation-${data.refNo}`);
     channel.bind("response-updated", (newResponses: Record<string, any>) => {
-      console.log("Received real-time update:", newResponses);
       setResponses(newResponses);
     });
 
@@ -522,23 +489,17 @@ const EvaluationPage = () => {
 
   useEffect(() => {
     let cleanup: (() => void) | undefined;
-
     const initialize = async () => {
-      // Load evaluation data from sessionStorage first
       const stored = sessionStorage.getItem("evaluationData");
       if (stored) {
         const data: EvaluationData = JSON.parse(stored);
         const result = await setupEvaluation(data);
         if (typeof result === 'function') cleanup = result;
       } else {
-        // No sessionStorage data — try fetching from the database using the refNo in the URL
         try {
-          const response = await fetch(
-            `/api/evaluation?refNo=${encodeURIComponent(refNo)}`
-          );
+          const response = await fetch(`/api/evaluation?refNo=${encodeURIComponent(refNo)}`);
           if (response.ok) {
             const record = await response.json();
-            // Reconstruct EvaluationData from the database record
             const data: EvaluationData = {
               personnelName: record.personnelName,
               position: record.position,
@@ -548,15 +509,12 @@ const EvaluationPage = () => {
               selectedCMOs: record.selectedCMOs || [],
               program: record.selectedPrograms?.[0] || "",
               orNumber: record.orNumber || "",
-              dateOfEvaluation: record.dateOfEvaluation
-                ? new Date(record.dateOfEvaluation).toISOString()
-                : "",
+              dateOfEvaluation: record.dateOfEvaluation ? new Date(record.dateOfEvaluation).toISOString() : "",
               refNo: record.refNo,
             };
             const result = await setupEvaluation(data);
             if (typeof result === 'function') cleanup = result;
           } else {
-            // Record not found — redirect home
             router.push("/");
           }
         } catch (error) {
@@ -565,12 +523,8 @@ const EvaluationPage = () => {
         }
       }
     };
-
     initialize();
-
-    return () => {
-      cleanup?.();
-    };
+    return () => { cleanup?.(); };
   }, [router, refNo, setupEvaluation]);
 
   const handleEditInfo = () => {
@@ -582,28 +536,17 @@ const EvaluationPage = () => {
 
   const handleSaveInfo = async () => {
     if (!tempInfoData) return;
-
     setIsLoadingInfo(true);
     try {
       const response = await fetch("/api/evaluation", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...tempInfoData,
-          selectedPrograms: [tempInfoData.program],
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...tempInfoData, selectedPrograms: [tempInfoData.program] }),
       });
-
       if (response.ok) {
-        // Update local state and sessionStorage
         setEvaluationData(tempInfoData);
         sessionStorage.setItem("evaluationData", JSON.stringify(tempInfoData));
-
-        // Refresh checklist logic if CMOs changed
         setupEvaluation(tempInfoData);
-
         setIsInfoModalOpen(false);
         toast.success("Evaluation information updated successfully!");
       } else {
@@ -614,40 +557,6 @@ const EvaluationPage = () => {
       toast.error("Error saving information.");
     } finally {
       setIsLoadingInfo(false);
-    }
-  };
-
-  // Don't save to local storage - only keep in memory
-  // useEffect(() => {
-  //   if (!evaluationData) return;
-  //   evaluationStore.saveRecord(updatedRecord as any);
-  // }, [responses, evaluationData]);
-
-  // Function to save responses to database and publish to Pusher
-  const saveResponsesToDatabase = async () => {
-    if (!evaluationData) return false;
-
-    try {
-      const response = await fetch("/api/evaluation/responses", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          refNo: evaluationData.refNo,
-          responses: responses,
-          publishUpdate: true, // Flag to trigger Pusher broadcast
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to save");
-      }
-
-      return true;
-    } catch (error) {
-      console.error("Error saving to database:", error);
-      return false;
     }
   };
 
@@ -672,7 +581,6 @@ const EvaluationPage = () => {
 
   const handleSaveEdit = async () => {
     if (currentEdit && evaluationData) {
-      // Update responses with the new edit
       const updatedResponses = {
         ...responses,
         [currentEdit.requirementId]: {
@@ -688,24 +596,14 @@ const EvaluationPage = () => {
           [currentEdit.field]: currentEdit.value,
         },
       };
-
       setResponses(updatedResponses);
       setIsModalOpen(false);
-
-      // Save to database immediately when user clicks save in modal
       try {
         const response = await fetch("/api/evaluation/responses", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            refNo: evaluationData.refNo,
-            responses: updatedResponses,
-            publishUpdate: true,
-          }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refNo: evaluationData.refNo, responses: updatedResponses, publishUpdate: true }),
         });
-
         if (response.ok) {
           toast.success("Changes saved!");
         } else {
@@ -739,59 +637,16 @@ const EvaluationPage = () => {
           [field]: value,
         },
       };
-
-      // Save to database immediately when compliance changes
       if (evaluationData) {
-        const saveToDb = async () => {
-          try {
-            const response = await fetch("/api/evaluation/responses", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                refNo: evaluationData.refNo,
-                responses: updatedResponses,
-                publishUpdate: true,
-              }),
-            });
-
-            if (!response.ok) {
-              console.error("Failed to save compliance change");
-            }
-          } catch (error) {
-            console.error("Error saving compliance change:", error);
-          }
-        };
-
-        saveToDb();
+        fetch("/api/evaluation/responses", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refNo: evaluationData.refNo, responses: updatedResponses, publishUpdate: true }),
+        }).catch(console.error);
       }
-
       return updatedResponses;
     });
   }, [evaluationData]);
-
-  const handleSubmit = async () => {
-    // Save to database before submission
-    if (evaluationData) {
-      setIsSubmitting(true);
-      try {
-        const saved = await saveResponsesToDatabase();
-
-        if (saved) {
-          toast.success("Evaluation saved and submitted successfully!");
-          router.push("/program-assessment");
-        } else {
-          toast.error("Failed to save evaluation. Please try again.");
-        }
-      } catch (error) {
-        console.error("Error submitting evaluation:", error);
-        toast.error("Error submitting evaluation.");
-      } finally {
-        setIsSubmitting(false);
-      }
-    }
-  };
 
   const handleClearAll = () => {
     showNotify(
@@ -802,11 +657,27 @@ const EvaluationPage = () => {
     );
   };
 
+  const matchedInstName = useMemo(() => {
+    if (!evaluationData) return "Not Specified";
+    const inst = allInstitutions.find(i => i.id === evaluationData.institution || i.name === evaluationData.institution);
+    return inst ? inst.name : evaluationData.institution;
+  }, [evaluationData, allInstitutions]);
+
+  const matchedInstAddress = useMemo(() => {
+    if (!evaluationData) return "---";
+    const inst = allInstitutions.find(i => i.id === evaluationData.institution || i.name === evaluationData.institution);
+    return inst ? (inst as any).address || "---" : "---";
+  }, [evaluationData, allInstitutions]);
+
   if (!evaluationData) {
-    return <div className="p-8">Loading...</div>;
+    return (
+      <div className="p-8 flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-2"></div>
+        Loading evaluation data...
+      </div>
+    );
   }
 
-  // Map program display using metadata if possible
   const displayedProgram = (() => {
     if (!evaluationData) return "Not Specified";
     const p = (evaluationData as any).program;
@@ -820,14 +691,15 @@ const EvaluationPage = () => {
 
   return (
     <TooltipProvider>
-      <div className="p-8">
+      {/* ─── SCREEN VIEW (hidden on print) ─── */}
+      <div className="print:hidden p-8">
         <Card className="shadow-lg border-blue-100">
           <CardHeader className="p-4 md:p-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
               <Button
                 variant="outline"
                 onClick={() => router.push(isLoggedIn ? "/admin/dashboard" : "/program-assessment")}
-                className="flex items-center gap-2 w-full sm:w-auto"
+                className="flex items-center gap-2 w-full sm:w-auto print:hidden"
               >
                 <ArrowLeft className="w-4 h-4" />
                 {isLoggedIn ? "Go back to Dashboard" : "Back to Form"}
@@ -851,7 +723,7 @@ const EvaluationPage = () => {
                     Changes saved automatically
                   </span>
                 </div>
-                <Button variant="destructive" size="sm" onClick={handleClearAll} className="w-full sm:w-auto">
+                <Button variant="destructive" size="sm" onClick={handleClearAll} className="w-full sm:w-auto print:hidden">
                   Clear All Contents
                 </Button>
               </div>
@@ -861,14 +733,12 @@ const EvaluationPage = () => {
               <Button
                 size="sm"
                 variant="ghost"
-                className="absolute top-2 right-2 h-8 w-8 p-0 hover:bg-blue-100 text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute top-2 right-2 h-8 w-8 p-0 hover:bg-blue-100 text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity print:hidden"
                 onClick={handleEditInfo}
               >
                 <Pencil className="w-4 h-4" />
               </Button>
-              <h2 className="font-semibold text-lg text-blue-700">
-                Evaluation Information
-              </h2>
+              <h2 className="font-semibold text-lg text-blue-700">Evaluation Information</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
                 <div>
                   <span className="text-gray-600 font-semibold block uppercase text-[10px]">Personnel:</span>
@@ -880,14 +750,13 @@ const EvaluationPage = () => {
                 </div>
                 <div>
                   <span className="text-gray-600 font-semibold block uppercase text-[10px]">Institution:</span>
-                  <p className="font-medium uppercase">{evaluationData.institution}</p>
+                  <p className="font-medium uppercase">{matchedInstName}</p>
                 </div>
                 <div>
                   <span className="text-gray-600 font-semibold block uppercase text-[10px]">Academic Year:</span>
                   <p className="font-medium">{evaluationData.academicYear}</p>
                 </div>
               </div>
-              {/* List of CMOs in header */}
               <div className="pt-2 border-t mt-2 flex flex-wrap items-center gap-4">
                 <div>
                   <span className="text-gray-600 font-semibold block uppercase text-[10px] mb-1">Evaluating Program:</span>
@@ -906,12 +775,8 @@ const EvaluationPage = () => {
               </div>
             </div>
 
-            <h1 className="text-2xl font-bold text-primary mt-4">
-              Evaluation Checklist
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Complete the evaluation for all requirements across the selected CMOs.
-            </p>
+            <h1 className="text-2xl font-bold text-primary mt-4">Evaluation Checklist</h1>
+            <p className="text-sm text-muted-foreground">Complete the evaluation for all requirements across the selected CMOs.</p>
           </CardHeader>
 
           <CardContent className="space-y-8 p-4 md:p-6">
@@ -919,62 +784,49 @@ const EvaluationPage = () => {
               <div className="py-8 text-center text-sm text-gray-600">Loading sections…</div>
             ) : (
               mergedSections.map((section, sectionIndex) => (
-              <div key={sectionIndex} className="space-y-4">
-                <h3 className="text-lg font-bold text-blue-800 border-b-2 border-blue-100 pb-1 mt-6">
-                  {sectionIndex + 1}. {section.title}
-                </h3>
-
-                {/* Requirements Table */}
-                <div className="overflow-x-auto border rounded-lg shadow-sm">
-                  {/* table-fixed enforces prefixes, min-w ensures scroll on mobile */}
-                  <table className="w-full text-sm table-fixed min-w-[1000px]">
-                    <thead className="bg-green-100">
-                      <tr>
-                        <th className="p-2 text-left border w-[12.5%]">Description</th>
-                        <th className="p-2 text-left border w-[12.5%]">Required Evidence</th>
-                        <th className="p-2 text-left border w-[12.5%]">Actual Situation</th>
-                        <th className="p-2 text-left border w-[12.5%]">Google Link</th>
-                        <th className="p-2 text-center border w-[12.5%]">HEI Compliance <span >(C/NC)</span></th>
-                        <th className="p-2 text-center border w-[12.5%]">CHED Compliance <span >(C/NC)</span></th>
-                        <th className="p-2 text-center border w-[12.5%]">Link Accessible</th>
-                        <th className="p-2 text-left border w-[12.5%]">Remarks</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {section.requirements.map((requirement: any) => (
-                        <RequirementRow
-                          key={requirement.id}
-                          requirement={requirement}
-                          response={responses[requirement.id]}
-                          onEditClick={handleEditClick}
-                          onComplianceChange={handleComplianceChange}
-                          isLoggedIn={isLoggedIn}
-                        />
-                      ))}
-                    </tbody>
-                  </table>
+                <div key={sectionIndex} className="space-y-4">
+                  <h3 className="text-lg font-bold text-blue-800 border-b-2 border-blue-100 pb-1 mt-6">
+                    {sectionIndex + 1}. {section.title}
+                  </h3>
+                  <div className="overflow-x-auto border rounded-lg shadow-sm">
+                    <table className="w-full text-sm table-fixed min-w-[1000px]">
+                      <thead className="bg-green-100">
+                        <tr>
+                          <th className="p-2 text-left border w-[12.5%]">Description</th>
+                          <th className="p-2 text-left border w-[12.5%]">Required Evidence</th>
+                          <th className="p-2 text-left border w-[12.5%]">Actual Situation</th>
+                          <th className="p-2 text-left border w-[12.5%]">Google Link</th>
+                          <th className="p-2 text-center border w-[12.5%]">HEI Compliance <span>(C/NC)</span></th>
+                          <th className="p-2 text-center border w-[12.5%]">CHED Compliance <span>(C/NC)</span></th>
+                          <th className="p-2 text-center border w-[12.5%]">Link Accessible</th>
+                          <th className="p-2 text-left border w-[12.5%]">Remarks</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {section.requirements.map((requirement: any) => (
+                          <RequirementRow
+                            key={requirement.id}
+                            requirement={requirement}
+                            response={responses[requirement.id]}
+                            onEditClick={handleEditClick}
+                            onComplianceChange={handleComplianceChange}
+                            isLoggedIn={isLoggedIn}
+                          />
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-            ))) }
+              ))
+            )}
 
-            <div className="flex flex-col sm:justify-end gap-4 pt-6 border-t">
+            <div className="flex flex-col sm:justify-end gap-4 pt-6 border-t print:hidden">
               <Button
-                style={{ backgroundColor: "#2980b9" }}
-                onClick={handleSubmit}
-                className="flex items-center justify-center gap-2 w-full sm:w-auto px-8"
-                disabled={isSubmitting}
+                onClick={() => window.print()}
+                className="flex items-center justify-center gap-2 w-full sm:w-auto px-8 bg-blue-600 hover:bg-blue-700"
               >
-                {isSubmitting ? (
-                  <>
-                    <span className="inline-block animate-spin mr-2">⟳</span>
-                    Submitting...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="w-4 h-4" />
-                    Finalize & Submit Evaluation
-                  </>
-                )}
+                <Printer className="w-4 h-4" />
+                Print Evaluation Report
               </Button>
             </div>
           </CardContent>
@@ -999,9 +851,7 @@ const EvaluationPage = () => {
               />
             </div>
             <DialogFooter className="gap-2">
-              <Button variant="outline" onClick={() => setIsModalOpen(false)}>
-                Cancel
-              </Button>
+              <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
               <Button onClick={handleSaveEdit} className="bg-blue-600 hover:bg-blue-700">
                 <Save className="w-4 h-4 mr-2" />
                 Save Changes
@@ -1019,51 +869,31 @@ const EvaluationPage = () => {
                 Edit Evaluation Information
               </DialogTitle>
             </DialogHeader>
-
             {tempInfoData && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label>Personnel Name</Label>
-                    <Input
-                      value={tempInfoData.personnelName}
-                      onChange={(e) => setTempInfoData({ ...tempInfoData, personnelName: e.target.value })}
-                    />
+                    <Input value={tempInfoData.personnelName} onChange={(e) => setTempInfoData({ ...tempInfoData, personnelName: e.target.value })} />
                   </div>
                   <div className="space-y-2">
                     <Label>Position</Label>
-                    <Input
-                      value={tempInfoData.position}
-                      onChange={(e) => setTempInfoData({ ...tempInfoData, position: e.target.value })}
-                    />
+                    <Input value={tempInfoData.position} onChange={(e) => setTempInfoData({ ...tempInfoData, position: e.target.value })} />
                   </div>
                   <div className="space-y-2">
                     <Label>Email</Label>
-                    <Input
-                      type="email"
-                      value={tempInfoData.email}
-                      onChange={(e) => setTempInfoData({ ...tempInfoData, email: e.target.value })}
-                    />
+                    <Input type="email" value={tempInfoData.email} onChange={(e) => setTempInfoData({ ...tempInfoData, email: e.target.value })} />
                   </div>
                   <div className="space-y-2">
                     <Label>OR Number</Label>
-                    <Input
-                      value={tempInfoData.orNumber}
-                      onChange={(e) => setTempInfoData({ ...tempInfoData, orNumber: e.target.value })}
-                    />
+                    <Input value={tempInfoData.orNumber} onChange={(e) => setTempInfoData({ ...tempInfoData, orNumber: e.target.value })} />
                   </div>
                 </div>
-
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label>Institution</Label>
-                    <Select
-                      value={tempInfoData.institution}
-                      onValueChange={(value) => setTempInfoData({ ...tempInfoData, institution: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
+                    <Select value={tempInfoData.institution} onValueChange={(value) => setTempInfoData({ ...tempInfoData, institution: value })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {allInstitutions.map(inst => (
                           <SelectItem key={inst.id} value={inst.name}>{inst.name}</SelectItem>
@@ -1073,13 +903,8 @@ const EvaluationPage = () => {
                   </div>
                   <div className="space-y-2">
                     <Label>Academic Year</Label>
-                    <Select
-                      value={tempInfoData.academicYear}
-                      onValueChange={(value) => setTempInfoData({ ...tempInfoData, academicYear: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
+                    <Select value={tempInfoData.academicYear} onValueChange={(value) => setTempInfoData({ ...tempInfoData, academicYear: value })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="2024-2025">2024-2025</SelectItem>
                         <SelectItem value="2025-2026">2025-2026</SelectItem>
@@ -1089,26 +914,15 @@ const EvaluationPage = () => {
                   </div>
                   <div className="space-y-2">
                     <Label>Date of Evaluation</Label>
-                    <Input
-                      type="date"
-                      value={tempInfoData.dateOfEvaluation ? tempInfoData.dateOfEvaluation.split('T')[0] : ""}
-                      onChange={(e) => setTempInfoData({ ...tempInfoData, dateOfEvaluation: e.target.value })}
-                    />
+                    <Input type="date" value={tempInfoData.dateOfEvaluation ? tempInfoData.dateOfEvaluation.split('T')[0] : ""} onChange={(e) => setTempInfoData({ ...tempInfoData, dateOfEvaluation: e.target.value })} />
                   </div>
                 </div>
-
                 <div className="col-span-1 md:col-span-2 space-y-4 pt-2 border-t mt-2">
                   <div className="space-y-2">
                     <Label>CMO</Label>
                     <MultipleSelector
-                      value={allCmos
-                        .filter(cmo => tempInfoData.selectedCMOs.includes(cmo.id))
-                        .map(cmo => ({ value: cmo.id, label: `${cmo.number} - ${cmo.title}` }))
-                      }
-                      onChange={(options) => setTempInfoData({
-                        ...tempInfoData,
-                        selectedCMOs: options.map(o => o.value)
-                      })}
+                      value={allCmos.filter(cmo => tempInfoData.selectedCMOs.includes(cmo.id)).map(cmo => ({ value: cmo.id, label: `${cmo.number} - ${cmo.title}` }))}
+                      onChange={(options) => setTempInfoData({ ...tempInfoData, selectedCMOs: options.map(o => o.value) })}
                       options={allCmos.map(cmo => ({ value: cmo.id, label: `${cmo.number} - ${cmo.title}` }))}
                       placeholder="Select CMOs..."
                       maxSelected={1}
@@ -1119,10 +933,7 @@ const EvaluationPage = () => {
                     <Label>Program</Label>
                     <MultipleSelector
                       value={tempInfoData.program ? [{ value: tempInfoData.program, label: tempInfoData.program }] : []}
-                      onChange={(options) => setTempInfoData({
-                        ...tempInfoData,
-                        program: options.length > 0 ? options[0].label : ""
-                      })}
+                      onChange={(options) => setTempInfoData({ ...tempInfoData, program: options.length > 0 ? options[0].label : "" })}
                       options={allPrograms.map(p => ({ value: p.id, label: p.name }))}
                       placeholder="Select Program..."
                       maxSelected={1}
@@ -1133,26 +944,13 @@ const EvaluationPage = () => {
                 </div>
               </div>
             )}
-
             <DialogFooter className="gap-2 pt-4 border-t">
-              <Button variant="outline" onClick={() => setIsInfoModalOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                onClick={handleSaveInfo}
-                className="bg-blue-600 hover:bg-blue-700"
-                disabled={isLoadingInfo}
-              >
+              <Button variant="outline" onClick={() => setIsInfoModalOpen(false)}>Cancel</Button>
+              <Button onClick={handleSaveInfo} className="bg-blue-600 hover:bg-blue-700" disabled={isLoadingInfo}>
                 {isLoadingInfo ? (
-                  <>
-                    <span className="inline-block animate-spin mr-2">⟳</span>
-                    Updating...
-                  </>
+                  <><span className="inline-block animate-spin mr-2">⟳</span>Updating...</>
                 ) : (
-                  <>
-                    <Save className="w-4 h-4 mr-2" />
-                    Save Information
-                  </>
+                  <><Save className="w-4 h-4 mr-2" />Save Information</>
                 )}
               </Button>
             </DialogFooter>
@@ -1165,49 +963,169 @@ const EvaluationPage = () => {
             <DialogHeader>
               <DialogTitle className={cn(
                 "flex items-center gap-2",
-                notifyType === "success" ? "text-green-600" :
-                  notifyType === "confirm" ? "text-amber-600" : "text-blue-600"
+                notifyType === "success" ? "text-green-600" : notifyType === "confirm" ? "text-amber-600" : "text-blue-600"
               )}>
                 {notifyType === "success" && <CheckCircle className="h-5 w-5" />}
                 {notifyType === "confirm" && <AlertTriangle className="h-5 w-5" />}
                 {notifyType === "info" && <Info className="h-5 w-5" />}
                 {notifyTitle}
               </DialogTitle>
-              <div className="py-4 text-sm text-gray-600">
-                {notifyMessage}
-              </div>
+              <div className="py-4 text-sm text-gray-600">{notifyMessage}</div>
             </DialogHeader>
             <DialogFooter className="flex sm:justify-end gap-2">
               {notifyType === "confirm" ? (
                 <>
-                  <Button variant="outline" onClick={() => setShowNotifyDialog(false)}>
-                    Cancel
-                  </Button>
-                  <Button
-                    style={{ backgroundColor: "#e74c3c" }}
-                    onClick={() => {
-                      if (onNotifyConfirm) onNotifyConfirm();
-                      setShowNotifyDialog(false);
-                    }}
-                  >
-                    Clear All
-                  </Button>
+                  <Button variant="outline" onClick={() => setShowNotifyDialog(false)}>Cancel</Button>
+                  <Button style={{ backgroundColor: "#e74c3c" }} onClick={() => { if (onNotifyConfirm) onNotifyConfirm(); setShowNotifyDialog(false); }}>Clear All</Button>
                 </>
               ) : (
-                <Button
-                  style={{ backgroundColor: "#2980b9" }}
-                  onClick={() => {
-                    if (onNotifyConfirm) onNotifyConfirm();
-                    setShowNotifyDialog(false);
-                  }}
-                >
-                  OK
-                </Button>
+                <Button style={{ backgroundColor: "#2980b9" }} onClick={() => { if (onNotifyConfirm) onNotifyConfirm(); setShowNotifyDialog(false); }}>OK</Button>
               )}
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* ─── PRINT VIEW (hidden on screen, shown on print) ─── */}
+      <div className="hidden print:block">
+        <style dangerouslySetInnerHTML={{
+          __html: `
+          @media print {
+            * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            body { margin: 0; padding: 0; background: #fff !important; font-family: Arial, sans-serif; }
+            @page { size: landscape; margin: 0; }
+          }
+          .print-container { padding: 15mm 20mm; position: relative; min-height: 100vh; background: #fff; }
+          .print-info-table td { padding: 4px 6px; border-bottom: 1px solid #ccc; font-size: 9pt; }
+          .print-info-table td.lbl { font-weight: bold; width: 130px; white-space: nowrap; }
+          .print-section-header { font-weight: bold; font-size: 9pt; border-bottom: 1px solid #000; padding: 3px 0; margin: 14px 0 0 0; text-transform: uppercase; }
+          .print-eval-table { width: 100%; border-collapse: collapse; font-size: 8pt; }
+          .print-eval-table th { border: 1px solid #aaa; padding: 4px 5px; text-align: center; font-weight: bold; background: #fff; vertical-align: middle; }
+          .print-eval-table td { border: 1px solid #aaa; padding: 4px 5px; vertical-align: top; }
+          .print-watermark {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-35deg);
+            font-size: 80pt;
+            font-weight: 900;
+            color: rgba(0,0,0,0.04);
+            pointer-events: none;
+            z-index: 0;
+            white-space: nowrap;
+            font-family: Arial, sans-serif;
+          }
+        `}} />
+
+        <div className="print-container">
+          {/* Watermark — subtle, diagonal, behind content */}
+          <div className="print-watermark">Self Assessment</div>
+
+          {/* ── HEADER: logo + agency name ── */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "14px", marginBottom: "6px" }}>
+          <img
+            src="/chedheader.png"
+            alt="CHED Logo"
+            style={{ height: "100px" }}
+          />
+
+        </div>
+
+        {/* ── REPORT TITLE ── */}
+        <div style={{ textAlign: "center", fontWeight: "bold", fontSize: "11pt", marginBottom: "14px" }}>
+          Self Assessment Report
+        </div>
+
+        {/* ── INSTITUTION INFO TABLE ── */}
+        <table className="print-info-table" style={{ width: "100%", borderCollapse: "collapse", marginBottom: "14px" }}>
+          <tbody>
+            <tr>
+              <td className="lbl">Institution Name:</td>
+              <td style={{ width: "45%", fontWeight: 500 }}>{matchedInstName}</td>
+              <td className="lbl">Academic Year:</td>
+              <td>{evaluationData.academicYear}</td>
+            </tr>
+            <tr>
+              <td className="lbl">Address:</td>
+              <td style={{ width: "45%" }}>{matchedInstAddress}</td>
+              <td className="lbl">OR Number:</td>
+              <td>{evaluationData.orNumber || "---"}</td>
+            </tr>
+            <tr>
+              <td className="lbl">Program Name:</td>
+              <td style={{ width: "45%" }}>{displayedProgram}</td>
+              <td className="lbl">Date of Evaluation:</td>
+              <td>{evaluationData.dateOfEvaluation ? new Date(evaluationData.dateOfEvaluation).toLocaleDateString() : "---"}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* ── SECTIONS ── */}
+        {mergedSections.map((section, sIdx) => (
+          <div key={sIdx} style={{ marginBottom: "16px" }}>
+            <div className="print-section-header">
+              {toRoman(sIdx + 1)}. {section.title}
+            </div>
+            <table className="print-eval-table">
+              <thead>
+                <tr>
+                  <th style={{ width: "25%" }}>Description</th>
+                  <th style={{ width: "15%" }}>Required Evidence</th>
+                  <th style={{ width: "22%" }}>Actual Situation</th>
+                  <th style={{ width: "28%" }}>Google Link</th>
+                  <th style={{ width: "10%" }}>Compliance (C/NC)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {section.requirements.map((req: any) => (
+                  <tr key={req.id}>
+                    <td>
+                      <div dangerouslySetInnerHTML={{ __html: req.description }} />
+                    </td>
+                    <td>{req.required_evidence || "N/A"}</td>
+                    <td>
+                      <div dangerouslySetInnerHTML={{ __html: responses[req.id]?.actual_situation || "" }} />
+                    </td>
+                    <td style={{ wordBreak: "break-all" }}>
+                      {responses[req.id]?.google_link ? (
+                        <a
+                          href={ensureExternalLink(responses[req.id]?.google_link)}
+                          style={{ color: "#1a0dab", fontSize: "8pt" }}
+                        >
+                          {stripHtml(responses[req.id]?.google_link || "")}
+                        </a>
+                      ) : ""}
+                    </td>
+                    <td style={{ textAlign: "center", fontWeight: "bold" }}>
+                      {responses[req.id]?.hei_compliance === "Complied" ? "C" :
+                        responses[req.id]?.hei_compliance === "Not Complied" ? "NC" : ""}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ))}
+
+        {/* ── FOOTER ── */}
+        <div style={{ marginTop: "20px", borderTop: "1px solid #ccc", paddingTop: "6px", fontSize: "8pt", color: "#444" }}>
+          <p style={{ fontStyle: "italic", marginBottom: "3px" }}>
+            Note: This data is system-generated. No signature required
+          </p>
+          <p style={{ fontWeight: "bold", textTransform: "uppercase", fontSize: "8.5pt", color: "#000", marginBottom: "2px" }}>
+            Program Evaluation Self Assessment
+          </p>
+          <p style={{ marginBottom: "3px", color: "#1a0dab", fontSize: "8pt" }}>
+            portal.chedro12.com/program-assessment/
+          </p>
+          <p style={{ fontStyle: "italic", color: "#555", fontSize: "7.5pt", lineHeight: 1.4 }}>
+            Disclaimer: This data is intended to be protected under data privacy and for the exclusive use of the intended requestor.
+            Any dissemination, alteration, or distribution of this document, or any part thereof or information therein, is strictly prohibited.
+            If you received this data in error, kindly notify CHED Regional Office XII.
+          </p>
+        </div>
+      </div>
+    </div>
     </TooltipProvider>
   );
 };

@@ -133,7 +133,7 @@ export const DataTable = React.forwardRef<DataTableRef, DataTableProps<any, any>
                             </Select>
                         </div>
                         <Button onClick={() => {
-                            setEditingInstitution({ name: "" })
+                            setEditingInstitution({ name: "", address: "" })
                             setIsModalOpen(true)
                         }}>
                             <Plus className="mr-2 h-4 w-4" /> Add Institution
@@ -253,6 +253,15 @@ export const DataTable = React.forwardRef<DataTableRef, DataTableProps<any, any>
                                     onChange={(e) => setEditingInstitution({ ...editingInstitution, name: e.target.value })}
                                     placeholder="e.g. University of Manila"
                                     required
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="address">Address</Label>
+                                <Input
+                                    id="address"
+                                    value={(editingInstitution as any)?.address || ""}
+                                    onChange={(e) => setEditingInstitution({ ...editingInstitution, address: e.target.value })}
+                                    placeholder="e.g. Ditsaan-ramain, Lanao Del Sur"
                                 />
                             </div>
                             <DialogFooter>
