@@ -2,6 +2,8 @@ import { columns } from "./columns"
 import { DataTable } from "./data-table"
 import { prisma } from "@/lib/prisma"
 
+export const dynamic = "force-dynamic"
+
 async function getData() {
     const [records, institutions, cmos, programs] = await Promise.all([
         prisma.evaluationRecord.findMany({
