@@ -271,7 +271,7 @@ export const DataTable = React.forwardRef<DataTableRef, DataTableProps<any, any>
                 </div>
 
                 <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                    <DialogContent>
+                    <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg overflow-x-hidden">
                         <DialogHeader>
                             <DialogTitle>{editingCmo?.id ? "Edit CMO" : "Add New CMO"}</DialogTitle>
                         </DialogHeader>
@@ -317,9 +317,9 @@ export const DataTable = React.forwardRef<DataTableRef, DataTableProps<any, any>
                             </div>
 
                             {editingCmo?.title && (
-                                <div className="rounded-lg bg-muted p-3">
+                                <div className="rounded-lg bg-muted p-3 overflow-hidden">
                                     <Label className="mb-1 block text-xs uppercase text-muted-foreground">Preview</Label>
-                                    <p className="text-sm font-medium">{editingCmo.title}</p>
+                                    <p className="text-sm font-medium break-words">{editingCmo.title}</p>
                                 </div>
                             )}
                             <DialogFooter>
