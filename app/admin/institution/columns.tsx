@@ -15,7 +15,7 @@ import { Institution } from "@prisma/client"
 
 export type InstitutionColumnProps = {
     onEdit: (institution: Institution) => void
-    onDelete: (id: string) => void
+    onDelete: (institution: Institution) => void
 }
 
 export const getColumns = ({ onEdit, onDelete }: InstitutionColumnProps): ColumnDef<Institution>[] => [
@@ -47,7 +47,7 @@ export const getColumns = ({ onEdit, onDelete }: InstitutionColumnProps): Column
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
-                            onClick={() => onDelete(institution.id)}
+                            onClick={() => onDelete(institution)}
                             className="text-destructive focus:text-destructive"
                         >
                             <Trash2 className="mr-2 h-4 w-4" />

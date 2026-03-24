@@ -10,8 +10,8 @@ export default function CmoPage() {
     const [data, setData] = React.useState<Cmo[]>([])
     const [isLoading, setIsLoading] = React.useState(true)
 
-    const fetchData = React.useCallback(async () => {
-        setIsLoading(true)
+    const fetchData = React.useCallback(async (showLoading = false) => {
+        if (showLoading) setIsLoading(true)
         try {
             const response = await fetch("/api/cmo")
             const cmos = await response.json()
@@ -20,30 +20,14 @@ export default function CmoPage() {
             console.error("Error fetching CMOs:", error)
             toast.error("Failed to load CMOs")
         } finally {
-            setIsLoading(false)
+            if (showLoading) setIsLoading(false)
         }
     }, [])
 
     React.useEffect(() => {
-        fetchData()
+        fetchData(true)
     }, [fetchData])
 
-    const handleDelete = async (id: string) => {
-        try {
-            const response = await fetch(`/api/cmo?id=${id}`, {
-                method: "DELETE",
-            })
-            if (response.ok) {
-                toast.success("CMO deleted")
-                fetchData()
-            } else {
-                toast.error("Failed to delete CMO")
-            }
-        } catch (error) {
-            console.error("Error deleting CMO:", error)
-            toast.error("Error deleting CMO")
-        }
-    }
 
     const tableRef = React.useRef<any>(null)
 
@@ -55,9 +39,9 @@ export default function CmoPage() {
                 tableRef.current.openEditModal(cmo)
             }
         },
-        onDelete: (id) => {
-            if (window.confirm("Are you sure you want to delete this CMO?")) {
-                handleDelete(id)
+        onDelete: (cmo) => {
+            if (tableRef.current) {
+                tableRef.current.openDeleteModal(cmo)
             }
         }
     })

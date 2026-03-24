@@ -10,7 +10,7 @@ import {
     getPaginationRowModel,
     useReactTable,
 } from "@tanstack/react-table"
-import { Plus, Save, Loader2 } from "lucide-react"
+import { Plus, Save, Loader2, Trash2 } from "lucide-react"
 
 import {
     Table,
@@ -50,8 +50,10 @@ export const DataTable = React.forwardRef<DataTableRef, DataTableProps<any, any>
     ({ columns, data, onRefresh }, ref) => {
         const [globalFilter, setGlobalFilter] = React.useState("")
         const [isModalOpen, setIsModalOpen] = React.useState(false)
+        const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false)
         const [isSubmitting, setIsSubmitting] = React.useState(false)
         const [editingCmo, setEditingCmo] = React.useState<any | null>(null)
+        const [cmoToDelete, setCmoToDelete] = React.useState<Cmo | null>(null)
         const [programs, setPrograms] = React.useState<Program[]>([])
 
         React.useEffect(() => {
@@ -83,6 +85,10 @@ export const DataTable = React.forwardRef<DataTableRef, DataTableProps<any, any>
             openEditModal: (cmo: Cmo) => {
                 setEditingCmo(cmo)
                 setIsModalOpen(true)
+            },
+            openDeleteModal: (cmo: Cmo) => {
+                setCmoToDelete(cmo)
+                setIsDeleteModalOpen(true)
             }
         }))
 
@@ -271,7 +277,7 @@ export const DataTable = React.forwardRef<DataTableRef, DataTableProps<any, any>
                 </div>
 
                 <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                    <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg overflow-x-hidden">
+                    <DialogContent className="w-full max-w-[90vw] sm:max-w-[700px] lg:max-w-[900px]">
                         <DialogHeader>
                             <DialogTitle>{editingCmo?.id ? "Edit CMO" : "Add New CMO"}</DialogTitle>
                         </DialogHeader>
@@ -307,11 +313,13 @@ export const DataTable = React.forwardRef<DataTableRef, DataTableProps<any, any>
                                         <SelectValue placeholder="Select a program" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {programs.map((program) => (
-                                            <SelectItem key={program.id} value={program.id}>
-                                                {program.name}
-                                            </SelectItem>
-                                        ))}
+                                        {programs
+                                            .filter(p => !data.some(cmo => cmo.programId === p.id && cmo.id !== editingCmo?.id))
+                                            .map((program) => (
+                                                <SelectItem key={program.id} value={program.id}>
+                                                    {program.name}
+                                                </SelectItem>
+                                            ))}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -334,6 +342,58 @@ export const DataTable = React.forwardRef<DataTableRef, DataTableProps<any, any>
                         </form>
                     </DialogContent>
                 </Dialog>
+
+                <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Delete CMO</DialogTitle>
+                        </DialogHeader>
+                        <div className="py-4">
+                            <p>Are you sure you want to delete <strong>{cmoToDelete?.title}</strong>?</p>
+                            <p className="text-sm text-muted-foreground mt-2">
+                                This action cannot be undone. This will permanently delete the CMO and all associated data.
+                            </p>
+                        </div>
+                        <DialogFooter>
+                            <Button type="button" variant="outline" onClick={() => setIsDeleteModalOpen(false)}>
+                                Cancel
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                onClick={async () => {
+                                    if (cmoToDelete) {
+                                        setIsSubmitting(true)
+                                        try {
+                                            const response = await fetch(`/api/cmo?id=${cmoToDelete.id}`, {
+                                                method: "DELETE",
+                                            })
+                                            if (response.ok) {
+                                                toast.success("CMO deleted")
+                                                setIsDeleteModalOpen(false)
+                                                onRefresh()
+                                            } else {
+                                                toast.error("Failed to delete CMO")
+                                            }
+                                        } catch (error) {
+                                            console.error("Error deleting CMO:", error)
+                                            toast.error("Error deleting CMO")
+                                        } finally {
+                                            setIsSubmitting(false)
+                                        }
+                                    }
+                                }}
+                                disabled={isSubmitting}
+                            >
+                                {isSubmitting ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                )}
+                                Delete
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
         )
     }
@@ -344,4 +404,5 @@ DataTable.displayName = "DataTable"
 // Helper to open edit modal from parent/columns
 export interface DataTableRef {
     openEditModal: (cmo: Cmo) => void
+    openDeleteModal: (cmo: Cmo) => void
 }

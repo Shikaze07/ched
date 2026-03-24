@@ -15,7 +15,7 @@ import { Program } from "@prisma/client"
 
 export type ProgramColumnProps = {
     onEdit: (program: Program) => void
-    onDelete: (id: string) => void
+    onDelete: (program: Program) => void
 }
 
 export const getColumns = ({ onEdit, onDelete }: ProgramColumnProps): ColumnDef<Program>[] => [
@@ -48,7 +48,7 @@ export const getColumns = ({ onEdit, onDelete }: ProgramColumnProps): ColumnDef<
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
-                            onClick={() => onDelete(program.id)}
+                            onClick={() => onDelete(program)}
                             className="text-destructive focus:text-destructive"
                         >
                             <Trash2 className="mr-2 h-4 w-4" />

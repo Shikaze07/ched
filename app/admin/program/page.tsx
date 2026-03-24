@@ -16,8 +16,8 @@ export default function ProgramPage() {
     const [data, setData] = React.useState<Program[]>([])
     const [isLoading, setIsLoading] = React.useState(true)
 
-    const fetchData = React.useCallback(async () => {
-        setIsLoading(true)
+    const fetchData = React.useCallback(async (showLoading = false) => {
+        if (showLoading) setIsLoading(true)
         try {
             const response = await fetch("/api/programs")
             const programs = await response.json()
@@ -26,30 +26,14 @@ export default function ProgramPage() {
             console.error("Error fetching programs:", error)
             toast.error("Failed to load programs")
         } finally {
-            setIsLoading(false)
+            if (showLoading) setIsLoading(false)
         }
     }, [])
 
     React.useEffect(() => {
-        fetchData()
+        fetchData(true)
     }, [fetchData])
 
-    const handleDelete = async (id: string) => {
-        try {
-            const response = await fetch(`/api/programs?id=${id}`, {
-                method: "DELETE",
-            })
-            if (response.ok) {
-                toast.success("Program deleted")
-                fetchData()
-            } else {
-                toast.error("Failed to delete program")
-            }
-        } catch (error) {
-            console.error("Error deleting program:", error)
-            toast.error("Error deleting program")
-        }
-    }
 
     const tableRef = React.useRef<any>(null)
 
@@ -59,9 +43,9 @@ export default function ProgramPage() {
                 tableRef.current.openEditModal(program)
             }
         },
-        onDelete: (id) => {
-            if (window.confirm("Are you sure you want to delete this program?")) {
-                handleDelete(id)
+        onDelete: (program) => {
+            if (tableRef.current) {
+                tableRef.current.openDeleteModal(program)
             }
         }
     })

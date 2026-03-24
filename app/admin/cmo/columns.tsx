@@ -16,7 +16,7 @@ import { Cmo } from "@prisma/client"
 
 export type CmoColumnProps = {
     onEdit: (cmo: Cmo) => void
-    onDelete: (id: string) => void
+    onDelete: (cmo: Cmo) => void
 }
 
 export const getColumns = ({ onEdit, onDelete }: CmoColumnProps): ColumnDef<any>[] => [
@@ -74,7 +74,7 @@ export const getColumns = ({ onEdit, onDelete }: CmoColumnProps): ColumnDef<any>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
-                            onClick={() => onDelete(cmo.id)}
+                            onClick={() => onDelete(cmo)}
                             className="text-destructive focus:text-destructive"
                         >
                             <Trash2 className="mr-2 h-4 w-4" />

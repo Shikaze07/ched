@@ -9,7 +9,7 @@ import {
     getPaginationRowModel,
     useReactTable,
 } from "@tanstack/react-table"
-import { Plus, Save, Loader2 } from "lucide-react"
+import { Plus, Save, Loader2, Trash2 } from "lucide-react"
 import {
     Table,
     TableBody,
@@ -46,19 +46,26 @@ interface DataTableProps<TData, TValue> {
 
 export interface DataTableRef {
     openEditModal: (institution: Institution) => void
+    openDeleteModal: (institution: Institution) => void
 }
 
 export const DataTable = React.forwardRef<DataTableRef, DataTableProps<any, any>>(
     ({ columns, data, onRefresh }, ref) => {
         const [globalFilter, setGlobalFilter] = React.useState("")
         const [isModalOpen, setIsModalOpen] = React.useState(false)
+        const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false)
         const [isSubmitting, setIsSubmitting] = React.useState(false)
         const [editingInstitution, setEditingInstitution] = React.useState<Partial<Institution> | null>(null)
+        const [institutionToDelete, setInstitutionToDelete] = React.useState<Institution | null>(null)
 
         React.useImperativeHandle(ref, () => ({
             openEditModal: (institution: Institution) => {
                 setEditingInstitution(institution)
                 setIsModalOpen(true)
+            },
+            openDeleteModal: (institution: Institution) => {
+                setInstitutionToDelete(institution)
+                setIsDeleteModalOpen(true)
             }
         }))
 
@@ -276,6 +283,58 @@ export const DataTable = React.forwardRef<DataTableRef, DataTableProps<any, any>
                                 </Button>
                             </DialogFooter>
                         </form>
+                    </DialogContent>
+                </Dialog>
+                
+                <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Delete Institution</DialogTitle>
+                        </DialogHeader>
+                        <div className="py-4">
+                            <p>Are you sure you want to delete <strong>{institutionToDelete?.name}</strong>?</p>
+                            <p className="text-sm text-muted-foreground mt-2">
+                                This action cannot be undone. This will permanently delete the institution and all associated data.
+                            </p>
+                        </div>
+                        <DialogFooter>
+                            <Button type="button" variant="outline" onClick={() => setIsDeleteModalOpen(false)}>
+                                Cancel
+                            </Button>
+                            <Button 
+                                variant="destructive" 
+                                onClick={async () => {
+                                    if (institutionToDelete) {
+                                        setIsSubmitting(true)
+                                        try {
+                                            const response = await fetch(`/api/institution?id=${institutionToDelete.id}`, {
+                                                method: "DELETE",
+                                            })
+                                            if (response.ok) {
+                                                toast.success("Institution deleted")
+                                                setIsDeleteModalOpen(false)
+                                                onRefresh()
+                                            } else {
+                                                toast.error("Failed to delete institution")
+                                            }
+                                        } catch (error) {
+                                            console.error("Error deleting institution:", error)
+                                            toast.error("Error deleting institution")
+                                        } finally {
+                                            setIsSubmitting(false)
+                                        }
+                                    }
+                                }}
+                                disabled={isSubmitting}
+                            >
+                                {isSubmitting ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                )}
+                                Delete
+                            </Button>
+                        </DialogFooter>
                     </DialogContent>
                 </Dialog>
             </div >

@@ -10,8 +10,8 @@ export default function InstitutionPage() {
     const [data, setData] = React.useState<Institution[]>([])
     const [isLoading, setIsLoading] = React.useState(true)
 
-    const fetchData = React.useCallback(async () => {
-        setIsLoading(true)
+    const fetchData = React.useCallback(async (showLoading = false) => {
+        if (showLoading) setIsLoading(true)
         try {
             const response = await fetch("/api/institution")
             const institutions = await response.json()
@@ -20,30 +20,14 @@ export default function InstitutionPage() {
             console.error("Error fetching institutions:", error)
             toast.error("Failed to load institutions")
         } finally {
-            setIsLoading(false)
+            if (showLoading) setIsLoading(false)
         }
     }, [])
 
     React.useEffect(() => {
-        fetchData()
+        fetchData(true)
     }, [fetchData])
 
-    const handleDelete = async (id: string) => {
-        try {
-            const response = await fetch(`/api/institution?id=${id}`, {
-                method: "DELETE",
-            })
-            if (response.ok) {
-                toast.success("Institution deleted")
-                fetchData()
-            } else {
-                toast.error("Failed to delete institution")
-            }
-        } catch (error) {
-            console.error("Error deleting institution:", error)
-            toast.error("Error deleting institution")
-        }
-    }
 
     const tableRef = React.useRef<any>(null)
 
@@ -53,9 +37,9 @@ export default function InstitutionPage() {
                 tableRef.current.openEditModal(institution)
             }
         },
-        onDelete: (id) => {
-            if (window.confirm("Are you sure you want to delete this institution?")) {
-                handleDelete(id)
+        onDelete: (institution) => {
+            if (tableRef.current) {
+                tableRef.current.openDeleteModal(institution)
             }
         }
     })
